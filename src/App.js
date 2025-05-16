@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState } from 'react';
 import { Layout, Typography, Button, Divider, Space } from 'antd';
 import PairwiseInput from './components/PairwiseInput';
@@ -19,6 +18,7 @@ function App() {
   const [ci, setCi] = useState(null);
   const [cr, setCr] = useState(null);
 
+  // Generate AHP pairwise matrix from comparisons
   const generateMatrixFromComparisons = (activeCriteria, filteredComparisons) => {
     const n = activeCriteria.length;
     const mat = Array.from({ length: n }, () => Array(n).fill(1));
@@ -39,6 +39,7 @@ function App() {
     return mat;
   };
 
+  // Handle 'Calculate' button click
   const handleSubmit = async () => {
     const activeCriteria = criteria.filter(c => c.trim() !== '');
     if (activeCriteria.length < 2) {
@@ -63,7 +64,8 @@ function App() {
       alert(err.message);
     }
   };
-
+  
+  // Reset all input and results
   const handleReset = () => {
     setCriteria(["", "", "", "", ""]);
     setComparisons([]);
@@ -84,10 +86,6 @@ function App() {
           comparisons={comparisons}
           setComparisons={setComparisons}
         />
-        {/* <Space style={{ marginTop: 16 }}>
-          <Button type="primary" onClick={handleSubmit}>Calculate</Button>
-          <Button onClick={handleReset}>Reset</Button>
-        </Space> */}
         <Space style={{ marginTop: 16 }}>
           <Button
             type="primary"

@@ -1,4 +1,3 @@
-// src/components/PairwiseInput.js
 import React, { useEffect } from 'react';
 import { Form, Input, InputNumber, Select, Row, Col, Typography, 
   Divider, Card, Space, Collapse } from 'antd';
@@ -7,12 +6,16 @@ const { Title } = Typography;
 const { Panel } = Collapse;
 
 const PairwiseInput = ({ criteria, setCriteria, comparisons, setComparisons }) => {
+  // Update individual criterion name by index
   const handleCriterionChange = (i, value) => {
     const updated = [...criteria];
     updated[i] = value;
     setCriteria(updated);
   };
 
+  // Generate all unique pairs of criteria for comparison
+  // Output(pairs): all combinations 
+  // e.g. pairs =[{ from: "Cost", to: "Efficiency", value: 1, direction: "Cost > Efficiency" }]
   const generatePairs = (items) => {
     const pairs = [];
     for (let i = 0; i < items.length; i++) {
@@ -29,7 +32,10 @@ const PairwiseInput = ({ criteria, setCriteria, comparisons, setComparisons }) =
   };
 
   useEffect(() => {
+    // active criteria names (non-empty only)
+    // e.g. active = ["Cost", "Efficiency", "Durability"]
     const active = criteria.filter(c => c.trim() !== '');
+    // Regenerate pairwise comparison structure when criteria change
     if (active.length > 1) {
       setComparisons(generatePairs(active));
     }

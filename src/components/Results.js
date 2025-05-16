@@ -1,4 +1,3 @@
-// 📁 src/components/Results.js
 import React from 'react';
 import { Typography, Card, Descriptions } from 'antd';
 import {
@@ -14,11 +13,21 @@ import {
 
 const { Title, Paragraph } = Typography;
 
+// Shows the AHP results: λmax, CI, CR, and weights chart
 const Results = ({ weights = [], criteria = [], lambdaMax, ci, cr }) => {
+  // Format weights with labels for chart
   const data = weights.map((w, i) => ({
-    name: criteria[i] || `C${i + 1}`,
+    name: criteria[i] || `C${i + 1}`, 
     weight: typeof w === 'number' && !isNaN(w) ? Math.round(w * 100) / 100 : 0,
   }));
+
+  // Prevent -0
+  const formatValue = (val) => {
+    if (Object.is(val, -0) || val === 0) return '0.0000';
+    return typeof val === 'number' && !isNaN(val)
+      ? val.toFixed(4)
+      : 'N/A';
+  };
 
   return (
     <div style={{ marginTop: 24 }}>
@@ -35,10 +44,10 @@ const Results = ({ weights = [], criteria = [], lambdaMax, ci, cr }) => {
       >
         <Descriptions.Item label="λ max">{lambdaMax?.toFixed(4)}</Descriptions.Item>
         <Descriptions.Item label="Consistency Index (CI)">
-          {typeof ci === 'number' ? ci.toFixed(4) : 'N/A'}
+          {typeof ci === 'number' ? formatValue(ci) : 'N/A'}
         </Descriptions.Item>
         <Descriptions.Item label="Consistency Ratio (CR)">
-          {typeof cr === 'number' ? cr.toFixed(4) : 'N/A'}
+          {typeof cr === 'number' ? formatValue(cr) : 'N/A'}
         </Descriptions.Item>
         <Descriptions.Item label="Interpretation">
           {typeof cr === 'number' ? (
@@ -51,7 +60,7 @@ const Results = ({ weights = [], criteria = [], lambdaMax, ci, cr }) => {
         </Descriptions.Item>
       </Descriptions>
 
-      <Card bordered>
+      <Card>
         <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Weights Visualization</Title>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart
