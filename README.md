@@ -46,6 +46,7 @@ A lightweight frontend application for computing **AHP (Analytic Hierarchy Proce
    → matrix POSTed to backend
 5. Backend returns weights, λmax, CI, CR
 6. Results and bar chart displayed
+```
 
 ## Technologies
 - React (hooks, functional components)
