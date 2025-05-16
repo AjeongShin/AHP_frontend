@@ -10,7 +10,7 @@ const { Title } = Typography;
 
 function App() {
   const [criteria, setCriteria] = useState(["", "", "", "", ""]);
-  const [comparisons, setComparisons] = useState([]);
+  // const [comparisons, setComparisons] = useState([]);
 
   const [matrix, setMatrix] = useState([]);
   const [weights, setWeights] = useState([]);
@@ -47,15 +47,8 @@ function App() {
       return;
     }
 
-    const filteredComparisons = comparisons.filter(
-      c => activeCriteria.includes(c.from) && activeCriteria.includes(c.to)
-    );
-
-    const generatedMatrix = generateMatrixFromComparisons(activeCriteria, filteredComparisons);
-    setMatrix(generatedMatrix);
-
     try {
-      const { weights, lambdaMax, ci, cr } = await fetchWeights(generatedMatrix);
+      const { weights, lambdaMax, ci, cr } = await fetchWeights(matrix);
       setWeights(weights);
       setLambdaMax(lambdaMax);
       setCi(ci);
@@ -68,7 +61,6 @@ function App() {
   // Reset all input and results
   const handleReset = () => {
     setCriteria(["", "", "", "", ""]);
-    setComparisons([]);
     setMatrix([]);
     setWeights([]);
     setLambdaMax(null);
@@ -78,13 +70,13 @@ function App() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={550} style={{ background: '#fff', padding: 24, borderRight: '1px solid #eee' }}>
+      <Sider width={700} style={{ background: '#fff', padding: 24, borderRight: '1px solid #eee' }}>
         <Title level={1} style={{ marginTop: 0, marginBottom: 24 }}>AHP Pairwise Tool</Title>
         <PairwiseInput
-          criteria={criteria}
-          setCriteria={setCriteria}
-          comparisons={comparisons}
-          setComparisons={setComparisons}
+            criteria={criteria}
+            setCriteria={setCriteria}
+            matrix={matrix}
+            setMatrix={setMatrix}
         />
         <Space style={{ marginTop: 16 }}>
           <Button
