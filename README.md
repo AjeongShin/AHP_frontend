@@ -1,73 +1,59 @@
-# AHP_frontend
-PSI_Internship
+# AHP Pairwise Calculator
 
-# Getting Started with Create React App
+A lightweight frontend application for computing **AHP (Analytic Hierarchy Process)** pairwise comparisons using the **Eigenvector Method**. It communicates with a Flask-based backend via a simple API.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+---
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Interactive criteria and comparison input
+- Automatically generates all valid pairwise combinations
+- Computes:
+  - Priority Weights (eigenvector)
+  - λₘₐₓ (principal eigenvalue)
+  - CI (Consistency Index)
+  - CR (Consistency Ratio)
+- Real-time input handling via `useEffect`
+- Handles formatting edge cases (e.g. `-0.0000` → `0.0000`)
+- Clean bar chart visualization 
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## File Responsibilities
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+| File | Role | Logic | UI |
+|------|------|-------|----|
+| `App.js` | Central logic controller | API calls, matrix generation, state mgmt | Layout |
+| `components/PairwiseInput.js` | Criteria input + comparison scale selector | - | Inputs + Selects |
+| `components/PairwiseMatrix.js` | Matrix renderer | - | AHP table UI |
+| `components/Results.js` | Results and chart renderer | - (uses precomputed props) | CI/CR and bar chart |
+| `api/fetchWeights.js` | API communication | Fetch + error handling | - |
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Real-Time Input Flow
 
-### `npm run build`
+```txt
+1. User types into criteria input fields
+2. useEffect runs on [criteria] change:
+   → filters active criteria
+   → generates all pairwise combinations using from/to
+   → stores them in comparisons[]
+3. User selects direction and importance scale
+4. On "Calculate":
+   → comparisons filtered
+   → matrix generated
+   → matrix POSTed to backend
+5. Backend returns weights, λmax, CI, CR
+6. Results and bar chart displayed
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Technologies
+- React (hooks, functional components)
+- Ant Design (UI)
+- Recharts (visualization)
+- Flask + NumPy (backend)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Live Deployment
+https://ahpfrontend.vercel.app/
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## MIT License
