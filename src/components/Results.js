@@ -1,20 +1,23 @@
 import React from 'react';
 import { Typography, Card, Descriptions } from 'antd';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-  LabelList,
+  BarChart, Bar, XAxis, YAxis,
+  Tooltip, CartesianGrid, ResponsiveContainer, LabelList,
 } from 'recharts';
 
-const { Title, Paragraph } = Typography;
+const { Title } = Typography;
 
 // Shows the AHP results: λmax, CI, CR, and weights chart
-const Results = ({ weights = [], criteria = [], lambdaMax, ci, cr }) => {
+// Shows the BWM results: Ranking, CI, CR, and weights chart
+const Results = ({ 
+  method, 
+  weights = [], 
+  criteria = [], 
+  lambdaMax = null,
+  sorted_criteria = [], 
+  ci, 
+  cr
+ }) => {
   // Format weights with labels for chart
   const data = weights.map((w, i) => ({
     name: criteria[i] || `C${i + 1}`, 
@@ -29,10 +32,16 @@ const Results = ({ weights = [], criteria = [], lambdaMax, ci, cr }) => {
       : 'N/A';
   };
 
+  const cap = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+  const title = `${cap(method)} Calculation Summary`;
+  const ranking = (sorted_criteria || [])
+    .map(g => Array.isArray(g) ? g.join(' = ') : g)
+    .join(' >'); 
+    
   return (
     <div style={{ marginTop: 24 }}>
       <Title level={3} style={{ marginTop: 0, marginBottom: 12 }}>
-        AHP Calculation Summary
+        {title}
       </Title>
 
       <Descriptions
@@ -42,7 +51,19 @@ const Results = ({ weights = [], criteria = [], lambdaMax, ci, cr }) => {
         labelStyle={{ width: 220, fontWeight: 600 }}
         style={{ marginBottom: 24 }}
       >
-        <Descriptions.Item label="λ max">{lambdaMax?.toFixed(4)}</Descriptions.Item>
+        {/* <Descriptions.Item label="λ max">{lambdaMax?.toFixed(4)}</Descriptions.Item> */}
+        {method === 'Ahp' && (
+          <Descriptions.Item label="λ max">
+            {lambdaMax?.toFixed(4)}
+          </Descriptions.Item>
+        )}
+        
+        {method === 'Bwm' && (
+          <Descriptions.Item label="Ranking">
+            {ranking || 'N/A'}
+          </Descriptions.Item>
+        )}
+
         <Descriptions.Item label="Consistency Index (CI)">
           {typeof ci === 'number' ? formatValue(ci) : 'N/A'}
         </Descriptions.Item>
