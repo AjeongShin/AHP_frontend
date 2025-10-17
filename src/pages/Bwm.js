@@ -1,29 +1,102 @@
 import React, { useState } from 'react';
-import { Layout, Typography, Button, Divider, Space, InputNumber, Table, Collapse, Select, Card, Dropdown } from 'antd';
+import { Layout, Typography, Button, Divider, Space, InputNumber, Select, theme, Upload, message, Modal } from 'antd';
 import BwmInput from '../components/BwmInput';
 import BwmMatrix from '../components/BwmMatrix';
 import Results from '../components/Results';
 import { BwmWeights } from '../api/fetchWeights';
+import { importMatrixFile } from '../utils/matrixImport';
+import { validateBWM } from '../utils/validators';
+import { UploadOutlined } from '@ant-design/icons';
+
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
-function Bwm() {
+function Bwm({variant}) {
+  // State management
   const [stage, setStage] = useState("number"); // number | text | null | edit
   const [criteriaCount, setCriteriaCount] = useState(0);
   const [criteria, setCriteria] = useState([]); // confirmed criteria
   const [tempCriteria, setTempCriteria] = useState([]); // temp criteria
-  const [matrix, setMatrix] = useState([]); 
-  const [weights, setWeights] = useState([]);
+  const [matrix, setMatrix] = useState([]);
+  
+  // Result state
+  const [crisp_weights, setWeights] = useState([]);
+  const [lower_weights, setLWeights] = useState([]);
+  const [upper_weights, setUWeights] = useState([]);
   const [sorted_criteria, setSortedCriteria] = useState([]);
-  const [lambdaMax, setLambdaMax] = useState(null);
   const [ci, setCi] = useState(null);
   const [cr, setCr] = useState(null);
-
   const [best, setBest] = useState(null); 
   const [worst, setWorst] = useState(null);
 
+  const { token } = theme.useToken();
 
+  /**
+   * Import AHP matrix from CSV/XLSX file
+   * Validates the imported data before applying
+   * @param {File} file - The uploaded file
+   * @returns {boolean} - Returns false to prevent default upload behavior
+   */
+    const handleImport = async (file) => {
+    try {
+        const { criteria: c, matrix: M } = await importMatrixFile(file);
+        const res = validateBWM(c, M);
+        if (!res.ok) {
+        Modal.error({
+            title: 'Invalid BWM matrix',
+            content: <div>{res.errors.map((e,i)=><div key={i}>• {e}</div>)}</div>,
+            width: 560,
+        });
+        return false;
+        }
+
+        // Auto-detect best and worst criteria from matrix
+        let detectedBest = null;
+        let detectedWorst = null;
+
+        // Find best: row with all non-zero values (except diagonal)
+        for (let i = 0; i < M.length; i++) {
+        const hasAllNonZero = M[i].every((val, j) => i === j || val !== 0);
+        if (hasAllNonZero) {
+            detectedBest = c[i];
+            break;
+        }
+        }
+        
+        // Find worst: column with all non-zero values (except diagonal)
+        for (let j = 0; j < M[0].length; j++) {
+        const hasAllNonZero = M.every((row, i) => i === j || row[j] !== 0);
+        if (hasAllNonZero) {
+            detectedWorst = c[j];
+            break;
+        }
+        }
+
+        // Apply validated data
+        setCriteria(c);
+        setMatrix(M);
+        setBest(detectedBest);
+        setWorst(detectedWorst);    
+
+        // Value initialization
+        setWeights([]);
+        setLWeights([]);
+        setUWeights([]);
+        setSortedCriteria([]);
+        setCi(null);
+        setCr(null);
+        setStage(null);
+        message.success('Matrix imported.');
+    } catch (e) {
+        Modal.error({ title: 'Import error', content: e.message || String(e) });
+    }
+    return false; 
+    };
+
+  /**
+   * Manual setting 
+   */
   // Step 1: Set number of criteria
   const handleSetCriteriaNumber = () => {
     const count = Math.max(2, Math.min(5, criteriaCount));
@@ -58,6 +131,7 @@ function Bwm() {
     }
 
     const payload = { 
+       variant,
        n: criteria.length, 
        criteria,
        bestIdx: bestIdx,
@@ -67,10 +141,11 @@ function Bwm() {
     };
 
     try {
-      const { weights, sorted_criteria, lambdaMax, ci, cr } = await BwmWeights(payload);
-      setWeights(weights);
+      const { crisp_weights, lower_weights, upper_weights, sorted_criteria, ci, cr } = await BwmWeights(payload);
+      setWeights(crisp_weights);
+      setLWeights(lower_weights);
+      setUWeights(upper_weights);
       setSortedCriteria(sorted_criteria);
-      setLambdaMax(lambdaMax);
       setCi(ci);
       setCr(cr);
     } catch (err) {
@@ -87,8 +162,9 @@ function Bwm() {
     setWorst(null);
     setMatrix([]);
     setWeights([]);
+    setLWeights([]);
+    setUWeights([]);
     setSortedCriteria([]);
-    setLambdaMax(null);
     setCi(null);
     setCr(null);
   };
@@ -113,8 +189,9 @@ function Bwm() {
     setBest(null);
     setWorst(null);
     setWeights([]);
+    setLWeights([]);
+    setUWeights([]);
     setSortedCriteria([]);
-    setLambdaMax(null);
     setCi(null);
     setCr(null);
     setStage(null);
@@ -123,11 +200,46 @@ function Bwm() {
     return (
         <Layout style={{ minHeight: '100vh' }}>
         <>
-        <Sider width={420} style={{ background: '#fff', padding: 24, borderRight: '1px solid #eee' }}>
-            <Title level={1} style={{ marginTop: 0, marginBottom: 24 }}>Trade Off Software</Title>
-                <Typography.Text type="secondary" style={{ fontSize: 16 }}>
-                Method: BWM
-                </Typography.Text>
+        <Sider width={420} style={{ 
+            background: token.colorBgContainer, 
+            padding: token.paddingLG, 
+            borderRight: `1px solid ${token.colorSplit}` 
+        }}>
+            <Title level={1} style={{ marginTop: 0, marginBottom: 0 }}>
+            Trade Off Software
+            </Title>
+            <Typography.Text type="secondary" style={{ fontSize: 16 }}>
+            Method: {variant}_BWM
+            </Typography.Text>
+
+            <div style={{ margin: '8px 0 24px' }}>
+            {/* Upload CSV file */}
+            <Upload
+              beforeUpload={handleImport}
+              showUploadList={false}
+              multiple={false}
+              maxCount={1}
+              accept={[
+                'text/csv',
+                'application/vnd.ms-excel',                                        // 일부 환경에서 CSV로 표시
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+                '.csv',
+                '.CSV',
+                '.xlsx',
+                '.XLSX'
+              ].join(',')}
+            >
+              <Button icon={<UploadOutlined />}>Import BWM CSV/XLSX</Button>
+            </Upload>
+
+            <Typography.Link
+                href={`${process.env.PUBLIC_URL}/templates/BWM_matrix_template.xlsx`}
+                download
+                style={{ display: 'inline-block', marginLeft: 10, textDecoration: 'underline' }}
+            >
+                BWM Matrix Template
+            </Typography.Link>
+            </div>
 
             {/* Always show current criteria count */}
             <div style={{ marginBottom: 24 }}>
@@ -246,7 +358,7 @@ function Bwm() {
         </Sider>
 
         <Layout>
-            <Content style={{ padding: '24px', background: '#fafafa' }}>
+            <Content style={{ padding: token.paddingLG, background: token.colorBgLayout }}>
             {!!best && !!worst && matrix.length > 0 && (
                 <>
                 <BwmMatrix
@@ -256,12 +368,15 @@ function Bwm() {
                     bestIdx={bestIdx}
                     worstIdx={worstIdx}
                 />
-                {weights.length > 0 && (
+                {crisp_weights.length > 0 && (
                     <>
                     <Divider />
                     <Results
-                        method = "Bwm"
-                        weights={weights}
+                        method = "bwm"
+                        variant={variant?.toLowerCase?.()} 
+                        crisp_weights={crisp_weights}
+                        lower_weights={lower_weights}
+                        upper_weights={upper_weights}
                         criteria={criteria}
                         sorted_criteria={sorted_criteria}
                         ci={ci}
