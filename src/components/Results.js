@@ -3,64 +3,57 @@ import { Typography, Card, Descriptions, theme, Table, Space, Button } from 'ant
 import {
   BarChart, Bar, XAxis, YAxis,
   Tooltip, CartesianGrid, ResponsiveContainer, LabelList,
-  ComposedChart, ErrorBar, Rectangle,
 } from 'recharts';
 import { exportWeightsXlsx } from '../utils/matrixExport';
 import { DownloadOutlined } from '@ant-design/icons';
 
 
 const { Title } = Typography;
-
-// Shows the AHP results: λmax, CI, CR, and weights chart
-// Shows the BWM results: Ranking, CI, CR, and weights chart
+// Draw boxplot
 const BoxPlotBar = (props) => {
   const { x, y, width, height, payload } = props;
-  
-  if (!payload) return null;
+
+  if (!payload || height <= 0) return null;
   
   const { lower, center, upper } = payload;
+  if (upper <= lower) return null; // Invalid range
+
   const centerX = x + width / 2;
-  const boxWidth = width * 0.6;
-  const boxLeft = x + width * 0.2;
+  const boxWidth = Math.min(width * 0.8, 80); // max 80px
+  const boxLeft = x + (width - boxWidth) / 2;
   
+  // --- Q1/Q3 ---
+  const q1 = center - 0.25 * (upper - lower);
+  const q3 = center + 0.25 * (upper - lower);
+
   // Calculate relative positions within the bar
   const range = upper - lower;
   if (range === 0) return null; // Avoid division by zero
   
-  const lowerY = y + height;
-  const centerY = y + height * (1 - (center - lower) / range);
   const upperY = y;
-  
-  // Calculate quartile positions (25% and 75%)
-  const q1 = lower + range * 0.25;
-  const q3 = lower + range * 0.75;
-  const q1Y = y + height * (1 - (q1 - lower) / range);
-  const q3Y = y + height * (1 - (q3 - lower) / range);
-  
+  const lowerY = y + height * (1 - lower / upper);
+  const centerY = y + height * (1 - center / upper);
+  const q1Y =  y + height * (1 - q1 / upper);
+  const q3Y = y + height * (1 - q3 / upper);
+
   return (
     <g>
-      {/* Lower whisker (from lower bound to Q1) */}
-      <line
-        x1={centerX}
-        y1={lowerY}
-        x2={centerX}
-        y2={q1Y}
-        stroke="#666"
-        strokeWidth={2}
-      />
-      
-      {/* Box (from Q1 to Q3) */}
+      {/* 수염 (lower→Q1, Q3→upper) */}
+      <line x1={centerX} y1={lowerY} x2={centerX} y2={q1Y} stroke="#333" strokeWidth={2} />
+      <line x1={centerX} y1={q3Y} x2={centerX} y2={upperY} stroke="#333" strokeWidth={2} />
+
+      {/* Box (Q1~Q3) */}
       <rect
         x={boxLeft}
         y={q3Y}
         width={boxWidth}
         height={q1Y - q3Y}
-        fill="rgba(64, 169, 255, 0.2)"
-        stroke="#333"
+        fill="rgba(24, 144, 255, 0.1)"
+        stroke="#000"
         strokeWidth={2}
       />
       
-      {/* Median line (center/crisp weight) */}
+      {/* Center line (crisp weight)*/}
       <line
         x1={boxLeft}
         y1={centerY}
@@ -70,23 +63,11 @@ const BoxPlotBar = (props) => {
         strokeWidth={3}
       />
       
-      {/* Upper whisker (from Q3 to upper bound) */}
-      <line
-        x1={centerX}
-        y1={q3Y}
-        x2={centerX}
-        y2={upperY}
-        stroke="#666"
-        strokeWidth={2}
-      />
-      
       {/* Markers */}
-      {/* Lower bound marker (circle) */}
-      <circle 
-        cx={centerX} 
-        cy={lowerY} 
-        r={6} 
-        fill="#FF6B6B" 
+      {/* Upper bound marker (triangle) */}
+      <path 
+        d={`M ${centerX} ${upperY - 6} L ${centerX - 5} ${upperY + 2} L ${centerX + 5} ${upperY + 2} Z`} 
+        fill="#52c41a" 
         stroke="#000" 
         strokeWidth={1.5} 
       />
@@ -97,15 +78,17 @@ const BoxPlotBar = (props) => {
         y={centerY - 5} 
         width={10} 
         height={10} 
-        fill="#4ECDC4" 
+        fill="#1890ff" 
         stroke="#000" 
-        strokeWidth={1.5} 
+        strokeWidth={2} 
       />
       
-      {/* Upper bound marker (triangle) */}
-      <path 
-        d={`M ${centerX} ${upperY - 8} L ${centerX - 6} ${upperY + 2} L ${centerX + 6} ${upperY + 2} Z`} 
-        fill="#95E1D3" 
+      {/* Lower bound marker (circle) */}
+      <circle 
+        cx={centerX} 
+        cy={lowerY} 
+        r={5} 
+        fill="#ff4d4f" 
         stroke="#000" 
         strokeWidth={1.5} 
       />
@@ -113,6 +96,8 @@ const BoxPlotBar = (props) => {
   );
 };
 
+// Shows the AHP results: λmax, CI, CR, and weights chart
+// Shows the BWM results: Ranking, CI, CR, and weights chart
 const Results = ({ 
   method,
   variant = null,
@@ -162,17 +147,17 @@ const Results = ({
   // Format weights with labels for chart
   const data = crisp_weights.map((w, i) => ({
     name: criteria[i] || `C${i + 1}`, 
-    crisp_weights: typeof w === 'number' && !isNaN(w) ? Math.floor(w * 1000) / 1000 : 0,
+    crisp_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
   }));
 
   const data_lower = lower_weights.map((w, i) => ({
     name: criteria[i] || `C${i + 1}`, 
-    lower_weights: typeof w === 'number' && !isNaN(w) ? Math.floor(w * 1000) / 1000 : 0,
+    lower_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
   }));
 
   const data_uppder = upper_weights.map((w, i) => ({
     name: criteria[i] || `C${i + 1}`, 
-    upper_weights: typeof w === 'number' && !isNaN(w) ? Math.floor(w * 1000) / 1000 : 0,
+    upper_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
   }));
 
   // 1) Prepare data for Linear BWM (crisp weights only)
@@ -224,6 +209,7 @@ const Results = ({
    */
   const handleExportXlsx = () => {
     exportWeightsXlsx({
+      method,
       variant,                 
       criteria,
       crisp_weights,
@@ -331,31 +317,48 @@ const Results = ({
           </ResponsiveContainer>
         ) : (
           // Box plot for nonlinear/fuzzy BWM
-          <ResponsiveContainer width="100%" height={380}>
-            <BarChart 
-              data={dataInterval} 
-              margin={{ top: 30, right: 16, bottom: 20, left: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis domain={[0, 'auto']} />
-              <Tooltip
-                formatter={(val, key, { payload }) => {
-                  if (key === 'center') return [val.toFixed(3), 'Crisp Weight'];
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart 
+                data={dataInterval} 
+                margin={{ top: 30, right: 16, bottom: 20, left: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis 
+                  domain={[
+                    (dataMin) => {
+                      const minLower = Math.min(...dataInterval.map(d => d.lower));
+                      return Math.max(0, minLower * 0.9); // 10% margin
+                    },
+                    (dataMax) => {
+                      const maxUpper = Math.max(...dataInterval.map(d => d.upper));
+                      return maxUpper * 1.1; // 10% margin
+                    }
+                  ]}
+                />
+                <Tooltip
+                  formatter={(val, key, { payload }) => {
+                    if (key === 'upper') {
+                      return [
+                        `Lower: ${payload.lower.toFixed(3)} | Center: ${payload.center.toFixed(3)} | Upper: ${payload.upper.toFixed(3)}`,
+                        'Weights'
+                      ];
+                    }
                   return [val, key];
-                }}
-                labelStyle={{ color: '#000' }}
-                itemStyle={{ color: '#000' }}
-              />
-              <Bar 
-                dataKey="center" 
-                shape={<BoxPlotBar />}
-                isAnimationActive={false}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+                  }}
+                  labelStyle={{ color: '#000' }}
+                  itemStyle={{ color: '#000' }}
+                />
+                <Bar 
+                  dataKey="upper" 
+                  shape={<BoxPlotBar />}
+                  isAnimationActive={false}
+                />
+              </BarChart>
+            </ResponsiveContainer>
         )}
       </Card>
+
 
       {/* Export Button */}
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
