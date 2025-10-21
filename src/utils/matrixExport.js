@@ -14,6 +14,7 @@ const round3 = (x) =>
  * @param {string} [args.filename]  bwm_weights_{variant}.xlsx
  */
 export function exportWeightsXlsx({
+  method,
   variant = 'linear',
   criteria = [],
   crisp_weights = [],
@@ -26,7 +27,7 @@ export function exportWeightsXlsx({
   if (variant === 'linear') {
     rows = criteria.map((c, i) => ({
       Criterion: c,
-      'Crisp Weight': round3(crisp_weights[i]),
+      'Weight': round3(crisp_weights[i]),
     }));
   } else {
     rows = criteria.map((c, i) => {
@@ -48,6 +49,10 @@ export function exportWeightsXlsx({
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Weights');
 
-  const outName = filename || `bwm_weights_${variant}.xlsx`;
+  const outName = filename || 
+    (method === 'bwm' 
+      ? `${method}_weights_${variant}.xlsx`
+      : `${method}_weights.xlsx`);
+
   XLSX.writeFile(wb, outName);
 }
