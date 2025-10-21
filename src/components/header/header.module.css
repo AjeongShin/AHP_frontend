@@ -1,0 +1,32 @@
+/* src/components/header/header.module.css */
+.header {
+  background-color: #325D88;
+  padding: 10px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.logoContainer { text-decoration: none; }
+.logoWrapper { display: flex; align-items: center; gap: 10px; }
+.logoImage { display: block; }
+
+.logoText {
+  color: #fff;
+  font-size: 18px;
+  margin-right: 20px;
+}
+
+.navContainer { display: flex; gap: 16px; }
+
+.navLink {
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.8;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.navLink:hover { opacity: 1; }

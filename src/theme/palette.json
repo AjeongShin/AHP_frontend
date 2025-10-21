@@ -1,0 +1,19 @@
+{
+  "seed": "#325D88",
+  "light": {
+    "primary": "#0062a2",
+    "onPrimary": "#ffffff",
+    "secondary": "#535f70",
+    "tertiary": "#6a5778",
+    "surface": "#fdfcff",
+    "onSurface": "#1a1c1e"
+  },
+  "dark": {
+    "primary": "#9dcaff",
+    "onPrimary": "#003257",
+    "secondary": "#bac8db",
+    "tertiary": "#d6bee5",
+    "surface": "#1a1c1e",
+    "onSurface": "#e2e2e6"
+  }
+}
