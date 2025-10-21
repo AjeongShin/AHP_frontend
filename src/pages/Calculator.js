@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Typography, Space, theme, Dropdown,Button  } from 'antd';
 import Header_custom from '../components/header/Header'; 
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate, useLocation } from 'react-router-dom'; 
 import Ahp from './Ahp';
 import Bwm from './Bwm';
 import { DownOutlined } from "@ant-design/icons";
@@ -24,9 +24,19 @@ const BWM_VARIANTS = {
 function Calculator() {
   const { token } = theme.useToken();
   const navigate = useNavigate(); 
+  const location = useLocation();
 
   const [method, setMethod] = useState(null);
   const [bwmVariant, setBwmVariant] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.reset) {
+      setMethod(null);
+      setBwmVariant(null);
+      navigate('/calculator', { replace: true, state: null });
+      return;
+    }
+  }, [location.state, navigate]);
 
   const handleBackToHome = () => {
     navigate('/'); 

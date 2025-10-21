@@ -24,7 +24,7 @@ export default function Header() {
       {/* Right side: Link */}
       <nav className={styles.navContainer}>
         <Link to="/" className={styles.navLink}>HOME</Link>
-        <Link to="/calculator" className={styles.navLink}>CALCULATOR</Link>
+        <Link to="/calculator" state={{ reset: true }} className={styles.navLink}>CALCULATOR</Link>
       </nav>
     </header>
   );
