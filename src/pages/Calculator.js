@@ -97,7 +97,7 @@ function Calculator() {
         <Layout style={{ minHeight: '100vh'}}>
           <Sider width={420} style={{ background: token.colorBgContainer, padding: token.paddingLG, borderRight: `1px solid ${token.colorSplit}` }}>
             <Title level={2} style={{ marginTop: 0, marginBottom: 24 }}>
-              Trade Off Calculator
+              Pairwise Comparison Tool
             </Title>
 
             <Space direction="vertical" style={{ width: "100%" }}>

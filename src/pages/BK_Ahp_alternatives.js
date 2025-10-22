@@ -213,7 +213,7 @@ function Ahp() {
         {step === "pairwise" && (
         <>
         <Sider width={420} style={{ background: token.colorBgContainer, padding: token.paddingLG, borderRight: `1px solid ${token.colorSplit}` }}>
-            <Title level={1} style={{ marginTop: 0, marginBottom: 24 }}>Trade Off Software</Title>
+            <Title level={1} style={{ marginTop: 0, marginBottom: 24 }}>Pairwise Comparison Tool</Title>
                 <Typography.Text type="secondary" style={{ fontSize: 16, display: 'block', marginBottom: 12 } }>
                 Method: AHP
                 </Typography.Text>

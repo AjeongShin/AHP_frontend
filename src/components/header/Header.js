@@ -17,7 +17,7 @@ export default function Header() {
             height={40}
             className={styles.logoImage}
           />
-          <span className={styles.logoText}>Trader Off Calculator</span>
+          <span className={styles.logoText}>Pairwise Comparison Tool</span>
         </div>
       </Link>
 
