@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Layout, Typography, Button, Divider, Space, InputNumber, Select, theme, Upload, message, Modal } from 'antd';
 import BwmInput from '../components/BwmInput';
 import BwmMatrix from '../components/BwmMatrix';
+import FuzzyMatrix, { convertMatrixToValues } from '../components/FuzzyMatrix';
 import Results from '../components/Results';
 import { BwmWeights } from '../api/fetchWeights';
 import { importMatrixFile } from '../utils/matrixImport';
@@ -99,7 +100,7 @@ function Bwm({variant}) {
    */
   // Step 1: Set number of criteria
   const handleSetCriteriaNumber = () => {
-    const count = Math.max(2, Math.min(5, criteriaCount));
+    const count = Math.max(2, Math.min(100, criteriaCount));
     setCriteriaCount(count);
     setCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
     setStage("text");
@@ -111,8 +112,10 @@ function Bwm({variant}) {
   // Step 2: Confirm criteria names
   const handleConfirmCriteria = () => {
     const count = criteria.length;
+    const diagonalValue = variant === 'fuzzy' ? 'EI' : 1;
+    const initialValue = variant === 'fuzzy' ? 'EI' : 1;
     setMatrix(Array.from({ length: count }, (_, i) =>
-      Array.from({ length: count }, (_, j) => (i === j ? 1 : 1))
+      Array.from({ length: count }, (_, j) => (i === j ? diagonalValue : initialValue))
     ));
     setStage(null); // move to default stage
   };
@@ -130,14 +133,17 @@ function Bwm({variant}) {
         return;
     }
 
+    const numericMatrix = convertMatrixToValues(matrix);
+    const processedMatrix = variant === 'fuzzy' ? numericMatrix : matrix; 
+
     const payload = { 
        variant,
        n: criteria.length, 
        criteria,
        bestIdx: bestIdx,
        worstIdx: worstIdx,
-       bestRow: [...matrix[bestIdx]],
-       worstCol: matrix.map(row => row[worstIdx]),
+       bestRow: [...processedMatrix[bestIdx]],
+       worstCol: processedMatrix.map(row => row[worstIdx]),
     };
 
     try {
@@ -178,10 +184,12 @@ function Bwm({variant}) {
   // Save changes from edit mode
   const handleSaveEdit = () => {
     const count = tempCriteria.length;
+    const diagonalValue = variant === 'fuzzy' ? 'EI' : 1;
+    const defaultValue = variant === 'fuzzy' ? 'EI' : 1;
     const newMatrix = Array.from({ length: count }, (_, i) =>
       Array.from({ length: count }, (_, j) => {
-        if (i === j) return 1;
-        return matrix?.[i]?.[j] ?? 1;
+        if (i === j) return diagonalValue;
+        return matrix?.[i]?.[j] ?? defaultValue;
       })
     );
     setCriteria([...tempCriteria]);
@@ -361,13 +369,24 @@ function Bwm({variant}) {
             <Content style={{ padding: token.paddingLG, background: token.colorBgLayout }}>
             {!!best && !!worst && matrix.length > 0 && (
                 <>
-                <BwmMatrix
-                    matrix={matrix}
-                    setMatrix={setMatrix}
-                    criteria={criteria}
-                    bestIdx={bestIdx}
-                    worstIdx={worstIdx}
-                />
+                {variant !== 'fuzzy' ? (
+                    <BwmMatrix
+                        matrix={matrix}
+                        setMatrix={setMatrix}
+                        criteria={criteria}
+                        bestIdx={bestIdx}
+                        worstIdx={worstIdx}
+                    />
+                ) : (
+                    <FuzzyMatrix
+                        matrix={matrix}
+                        setMatrix={setMatrix}
+                        criteria={criteria}
+                        bestIdx={bestIdx}
+                        worstIdx={worstIdx}
+                    />
+                )}
+                
                 {crisp_weights.length > 0 && (
                     <>
                     <Divider />
