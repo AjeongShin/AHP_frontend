@@ -12,85 +12,64 @@ const { Title } = Typography;
 // Draw boxplot
 const BoxPlotBar = (props) => {
   const { x, y, width, height, payload } = props;
+  if (!payload || height < 0) return null;
 
-  if (!payload || height <= 0) return null;
-  
   const { lower, center, upper } = payload;
-  if (upper <= lower) return null; // Invalid range
+  if (upper < lower) return null; // Invalid range
+  if (upper === 0) return null; // Avoid division by zero
 
   const centerX = x + width / 2;
   const boxWidth = Math.min(width * 0.8, 80); // max 80px
   const boxLeft = x + (width - boxWidth) / 2;
   
   // --- Q1/Q3 ---
-  const q1 = center - 0.25 * (upper - lower);
-  const q3 = center + 0.25 * (upper - lower);
+  // const q1 = center - 0.25 * (upper - lower);
+  // const q3 = center + 0.25 * (upper - lower);
 
   // Calculate relative positions within the bar
-  const range = upper - lower;
-  if (range === 0) return null; // Avoid division by zero
+  // const range = upper - lower;
+  // if (range === 0) return null; // Avoid division by zero
   
   const upperY = y;
   const lowerY = y + height * (1 - lower / upper);
   const centerY = y + height * (1 - center / upper);
-  const q1Y =  y + height * (1 - q1 / upper);
-  const q3Y = y + height * (1 - q3 / upper);
+  // const q1Y =  y + height * (1 - q1 / upper);
+  // const q3Y = y + height * (1 - q3 / upper);
 
   return (
     <g>
-      {/* 수염 (lower→Q1, Q3→upper) */}
-      <line x1={centerX} y1={lowerY} x2={centerX} y2={q1Y} stroke="#333" strokeWidth={2} />
-      <line x1={centerX} y1={q3Y} x2={centerX} y2={upperY} stroke="#333" strokeWidth={2} />
+      {/* Whisker (lower→upper) */}
+      <line x1={centerX} y1={lowerY} x2={centerX} y2={upperY} stroke="#333" strokeWidth={1.5} />
 
-      {/* Box (Q1~Q3) */}
-      <rect
-        x={boxLeft}
-        y={q3Y}
-        width={boxWidth}
-        height={q1Y - q3Y}
-        fill="rgba(24, 144, 255, 0.1)"
-        stroke="#000"
+      {/* Markers */}
+      {/* Upper bound line(blue) */}
+      <line 
+        x1={centerX - 0.3 * boxWidth}
+        y1={upperY}
+        x2={centerX + 0.3 * boxWidth}
+        y2={upperY}
+        stroke="#1a53c4ff" 
         strokeWidth={2}
       />
       
-      {/* Center line (crisp weight)*/}
-      <line
-        x1={boxLeft}
-        y1={centerY}
-        x2={boxLeft + boxWidth}
-        y2={centerY}
-        stroke="#000"
-        strokeWidth={3}
-      />
-      
-      {/* Markers */}
-      {/* Upper bound marker (triangle) */}
-      <path 
-        d={`M ${centerX} ${upperY - 6} L ${centerX - 5} ${upperY + 2} L ${centerX + 5} ${upperY + 2} Z`} 
-        fill="#52c41a" 
-        stroke="#000" 
-        strokeWidth={1.5} 
-      />
-      
-      {/* Center marker (square) */}
+      {/* Center marker square(black) */}
       <rect 
-        x={centerX - 5} 
-        y={centerY - 5} 
-        width={10} 
-        height={10} 
-        fill="#1890ff" 
-        stroke="#000" 
-        strokeWidth={2} 
+        x={centerX - 3.5} 
+        y={centerY - 3.5} 
+        width={7} 
+        height={7} 
+        fill="#000"
+        strokeWidth={1.5} 
       />
       
-      {/* Lower bound marker (circle) */}
-      <circle 
-        cx={centerX} 
-        cy={lowerY} 
-        r={5} 
-        fill="#ff4d4f" 
-        stroke="#000" 
-        strokeWidth={1.5} 
+      {/* Lower bound line(red) */}
+      <line 
+        x1={centerX - 0.3 * boxWidth}
+        y1={lowerY}
+        x2={centerX + 0.3 * boxWidth}
+        y2={lowerY}
+        stroke="#ff4d4f" 
+        strokeWidth={2}
       />
     </g>
   );
@@ -108,7 +87,8 @@ const Results = ({
   lambdaMax=[], 
   sorted_criteria = [], 
   ci, 
-  cr
+  cr,
+  extra = {},
  }) => {
   const { token } = theme.useToken();
 
@@ -150,16 +130,6 @@ const Results = ({
     crisp_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
   }));
 
-  const data_lower = lower_weights.map((w, i) => ({
-    name: criteria[i] || `C${i + 1}`, 
-    lower_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
-  }));
-
-  const data_uppder = upper_weights.map((w, i) => ({
-    name: criteria[i] || `C${i + 1}`, 
-    upper_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
-  }));
-
   // 1) Prepare data for Linear BWM (crisp weights only)
   const dataLinear = data.map(d => ({
     name: d.name,
@@ -198,7 +168,7 @@ const Results = ({
     { title: 'Criterion', dataIndex: 'name', key: 'name' },
     { title: 'Lower Weight', dataIndex: 'lower', key: 'lower',
       render: (v) => (typeof v === 'number' ? v.toFixed(3) : '0.000') },
-    { title: 'Crisp / Center', dataIndex: 'center', key: 'center',
+    { title: 'Center', dataIndex: 'center', key: 'center',
       render: (v) => (typeof v === 'number' ? v.toFixed(3) : '0.000') },
     { title: 'Upper Weight', dataIndex: 'upper', key: 'upper',
       render: (v) => (typeof v === 'number' ? v.toFixed(3) : '0.000') },
@@ -272,12 +242,13 @@ const Results = ({
         {"Weights"}
       </Title>
 
-        {variant === 'linear' ? (
+        {(variant === 'linear' || variant === 'origin') ? (
           <Table
             dataSource={dataLinear.map((d, idx) => ({ key: idx, name: d.name, crisp: d.crisp }))}
             columns={columnsLinear}
             size="small"
             pagination={false}
+            tableLayout="fixed"  
             style={{ marginBottom: 24 }}
           />
         ) : (
@@ -286,6 +257,7 @@ const Results = ({
             columns={columnsInterval}
             size="small"
             pagination={false}
+            tableLayout="fixed"  
             style={{ marginBottom: 24 }}
           />
         )}
@@ -294,7 +266,7 @@ const Results = ({
       <Card>
         <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Weights Visualization</Title>
 
-        {variant === 'linear' ? (
+        {(variant === 'linear' || variant === 'origin') ? (
           // Simple bar chart for linear BWM
           <ResponsiveContainer width="100%" height={300}>
             <BarChart
@@ -328,11 +300,13 @@ const Results = ({
                   domain={[
                     (dataMin) => {
                       const minLower = Math.min(...dataInterval.map(d => d.lower));
-                      return Math.max(0, minLower * 0.9); // 10% margin
+                      const ymin = Math.max(0, minLower * 0.9)
+                      return Math.round(ymin * 1000) / 1000; // 10% margin
                     },
                     (dataMax) => {
                       const maxUpper = Math.max(...dataInterval.map(d => d.upper));
-                      return maxUpper * 1.1; // 10% margin
+                      const ymax = maxUpper * 1.1
+                      return Math.round(ymax * 1000) / 1000; // 10% margin
                     }
                   ]}
                 />

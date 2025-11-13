@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Typography, Button, Divider, Space, InputNumber, Select, theme, Upload, message, Modal } from 'antd';
 import BwmInput from '../components/BwmInput';
 import BwmMatrix from '../components/BwmMatrix';
-import FuzzyMatrix, { convertMatrixToValues } from '../components/FuzzyMatrix';
+import L_FuzzyMatrix, { convertMatrixToValues } from '../components/BwmFuzzyMatrix';
+import FuzzyMatrix from '../components/BwmFuzzyMatrixTfn';
 import Results from '../components/Results';
 import { BwmWeights } from '../api/fetchWeights';
 import { importMatrixFile } from '../utils/matrixImport';
@@ -13,11 +14,12 @@ import { UploadOutlined } from '@ant-design/icons';
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
-function Bwm({variant}) {
+function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, updateCriteria}) {
   // State management
   const [stage, setStage] = useState("number"); // number | text | null | edit
-  const [criteriaCount, setCriteriaCount] = useState(0);
-  const [criteria, setCriteria] = useState([]); // confirmed criteria
+  // const [criteriaCount, setCriteriaCount] = useState(0);
+  // const [criteria, setCriteria] = useState([]); // confirmed criteria
+  const [localCount, setLocalCount] = useState(criteria.length || criteriaCount || 0);
   const [tempCriteria, setTempCriteria] = useState([]); // temp criteria
   const [matrix, setMatrix] = useState([]);
   
@@ -30,6 +32,7 @@ function Bwm({variant}) {
   const [cr, setCr] = useState(null);
   const [best, setBest] = useState(null); 
   const [worst, setWorst] = useState(null);
+  const [extra, setExtra] = useState([]);
 
   const { token } = theme.useToken();
 
@@ -75,7 +78,9 @@ function Bwm({variant}) {
         }
 
         // Apply validated data
-        setCriteria(c);
+        // setCriteria(c);
+        updateCriteria(c);
+        setLocalCount(c.length);
         setMatrix(M);
         setBest(detectedBest);
         setWorst(detectedWorst);    
@@ -88,6 +93,7 @@ function Bwm({variant}) {
         setCi(null);
         setCr(null);
         setStage(null);
+        setExtra([]);
         message.success('Matrix imported.');
     } catch (e) {
         Modal.error({ title: 'Import error', content: e.message || String(e) });
@@ -101,8 +107,10 @@ function Bwm({variant}) {
   // Step 1: Set number of criteria
   const handleSetCriteriaNumber = () => {
     const count = Math.max(2, Math.min(100, criteriaCount));
-    setCriteriaCount(count);
-    setCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
+    // setCriteriaCount(count);
+    // setCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
+    setLocalCount(count);
+    updateCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
     setStage("text");
   };
 
@@ -112,13 +120,37 @@ function Bwm({variant}) {
   // Step 2: Confirm criteria names
   const handleConfirmCriteria = () => {
     const count = criteria.length;
-    const diagonalValue = variant === 'fuzzy' ? 'EI' : 1;
-    const initialValue = variant === 'fuzzy' ? 'EI' : 1;
+    const diagonalValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
+    const initialValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
     setMatrix(Array.from({ length: count }, (_, i) =>
       Array.from({ length: count }, (_, j) => (i === j ? diagonalValue : initialValue))
     ));
     setStage(null); // move to default stage
   };
+
+  useEffect(() => {
+    if (!criteria.length) return; // no criteria yet
+    handleConfirmCriteria();
+    setBest(null);
+    setWorst(null);
+    setWeights([]);
+    setLWeights([]);
+    setUWeights([]);
+    setSortedCriteria([]);
+    setCi(null);
+    setCr(null);
+    setExtra([]);
+  }, [methodChanged, variant]); 
 
   // Step 3: extract calculated vector from the matrix
   const handleSubmit = async () => {
@@ -134,7 +166,7 @@ function Bwm({variant}) {
     }
 
     const numericMatrix = convertMatrixToValues(matrix);
-    const processedMatrix = variant === 'fuzzy' ? numericMatrix : matrix; 
+    const processedMatrix = variant === 'linguistic fuzzy' ? numericMatrix : matrix; 
 
     const payload = { 
        variant,
@@ -154,6 +186,7 @@ function Bwm({variant}) {
       setSortedCriteria(sorted_criteria);
       setCi(ci);
       setCr(cr);
+      setExtra(extra);
     } catch (err) {
       alert(err.message);
     }
@@ -162,8 +195,10 @@ function Bwm({variant}) {
   // Reset everything
   const handleReset = () => {
     setStage("number");
-    setCriteriaCount(0);
-    setCriteria([]);
+    // setCriteriaCount(0);
+    // setCriteria([]);
+    updateCriteria([]);
+    setLocalCount(0);
     setBest(null);
     setWorst(null);
     setMatrix([]);
@@ -173,6 +208,7 @@ function Bwm({variant}) {
     setSortedCriteria([]);
     setCi(null);
     setCr(null);
+    setExtra([]);
   };
 
   // Enter edit mode for criteria
@@ -184,15 +220,26 @@ function Bwm({variant}) {
   // Save changes from edit mode
   const handleSaveEdit = () => {
     const count = tempCriteria.length;
-    const diagonalValue = variant === 'fuzzy' ? 'EI' : 1;
-    const defaultValue = variant === 'fuzzy' ? 'EI' : 1;
+    const diagonalValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
+    const defaultValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
     const newMatrix = Array.from({ length: count }, (_, i) =>
       Array.from({ length: count }, (_, j) => {
         if (i === j) return diagonalValue;
         return matrix?.[i]?.[j] ?? defaultValue;
       })
     );
-    setCriteria([...tempCriteria]);
+    // setCriteria([...tempCriteria]);
+    updateCriteria([...tempCriteria]);
     setMatrix(newMatrix);
     setBest(null);
     setWorst(null);
@@ -202,23 +249,33 @@ function Bwm({variant}) {
     setSortedCriteria([]);
     setCi(null);
     setCr(null);
+    setExtra([]);
     setStage(null);
   };
   
     return (
-        <Layout style={{ minHeight: '100vh' }}>
-        <>
-        <Sider width={420} style={{ 
-            background: token.colorBgContainer, 
-            padding: token.paddingLG, 
-            borderRight: `1px solid ${token.colorSplit}` 
-        }}>
+          <div
+            style={{
+              display: 'flex',
+              minHeight: '100vh',
+              background: token.colorBgLayout,
+            }}
+          >
+            <div
+              style={{
+                width: 420,
+                background: token.colorBgContainer,
+                padding: token.paddingLG,
+                borderRight: `1px solid ${token.colorSplit}`,
+              }}
+            >
+
             <Title level={1} style={{ marginTop: 0, marginBottom: 0 }}>
             Trade Off Software
             </Title>
-            <Typography.Text type="secondary" style={{ fontSize: 16 }}>
-            Method: {variant}_BWM
-            </Typography.Text>
+            <div style={{ marginTop: 24, marginBottom: 24 }}>
+              {methodSelector}
+            </div>
 
             <div style={{ margin: '8px 0 24px' }}>
             {/* Upload CSV file */}
@@ -229,7 +286,7 @@ function Bwm({variant}) {
               maxCount={1}
               accept={[
                 'text/csv',
-                'application/vnd.ms-excel',                                        // 일부 환경에서 CSV로 표시
+                'application/vnd.ms-excel',                                        
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
                 '.csv',
                 '.CSV',
@@ -256,9 +313,11 @@ function Bwm({variant}) {
                 <Space style={{ marginTop: 8 }}>
                 <InputNumber
                     min={2}
-                    max={5}
-                    value={criteriaCount}
-                    onChange={setCriteriaCount}
+                    max={100}
+                    // value={criteriaCount}
+                    // onChange={setCriteriaCount}
+                    value={localCount}
+                    onChange={(value) => setLocalCount(value ?? 0)}
                 />
                 <Button type="primary" onClick={handleSetCriteriaNumber}>
                     Set Criteria
@@ -276,7 +335,8 @@ function Bwm({variant}) {
             <>
                 <BwmInput
                 criteria={criteria}
-                setCriteria={setCriteria}
+                // setCriteria={setCriteria}
+                setCriteria={updateCriteria}
                 editable={true}
                 allowAddRemove={false}
                 />
@@ -295,7 +355,8 @@ function Bwm({variant}) {
             <>
                 <BwmInput
                 criteria={stage === "edit" ? tempCriteria : criteria}
-                setCriteria={stage === "edit" ? setTempCriteria : setCriteria}
+                // setCriteria={stage === "edit" ? setTempCriteria : setCriteria}
+                setCriteria={stage === "edit" ? setTempCriteria : updateCriteria}
                 editable={stage === "edit" || stage === "text"}
                 allowAddRemove={stage === "edit"}
                 />
@@ -363,13 +424,29 @@ function Bwm({variant}) {
             </Button>
         </Space>
         )}
-        </Sider>
+        </div>
 
-        <Layout>
-            <Content style={{ padding: token.paddingLG, background: token.colorBgLayout }}>
+          <div style={{ flex: 1, minWidth: 0, padding: token.paddingLG, background: token.colorBgLayout }}>
             {!!best && !!worst && matrix.length > 0 && (
                 <>
-                {variant !== 'fuzzy' ? (
+                <div style={{ width: '100%', overflowX: 'auto' }}>
+                {variant === 'linguistic fuzzy' ? (
+                    <L_FuzzyMatrix
+                    matrix={matrix}
+                    setMatrix={setMatrix}
+                    criteria={criteria}
+                    bestIdx={bestIdx}
+                    worstIdx={worstIdx}
+                    />
+                ) : variant === 'fuzzy' ? (
+                    <FuzzyMatrix
+                    matrix={matrix}
+                    setMatrix={setMatrix}
+                    criteria={criteria}
+                    bestIdx={bestIdx}
+                    worstIdx={worstIdx}
+                    />
+                ) : (
                     <BwmMatrix
                         matrix={matrix}
                         setMatrix={setMatrix}
@@ -377,16 +454,9 @@ function Bwm({variant}) {
                         bestIdx={bestIdx}
                         worstIdx={worstIdx}
                     />
-                ) : (
-                    <FuzzyMatrix
-                        matrix={matrix}
-                        setMatrix={setMatrix}
-                        criteria={criteria}
-                        bestIdx={bestIdx}
-                        worstIdx={worstIdx}
-                    />
                 )}
-                
+                </div>
+
                 {crisp_weights.length > 0 && (
                     <>
                     <Divider />
@@ -400,15 +470,14 @@ function Bwm({variant}) {
                         sorted_criteria={sorted_criteria}
                         ci={ci}
                         cr={cr}
+                        extra={extra}
                     />
                     </>
                 )}
                 </>
             )}
-            </Content>
-        </Layout>
-        </>
-        </Layout>
+        </div>
+      </div>
     );
 }
 

@@ -7,12 +7,13 @@ const API_BASE =
  * API Call: AhpWeights
  * sends pairwise matrix to the backend and returns AHP results
 **/
-export const AhpWeights = async (matrix) => {
+export const AhpWeights = async (payload) => {
     // const response = await fetch('https://ahp-backend-725147247515.europe-west1.run.app/ahp_calculate', {
     const response = await fetch(`${API_BASE}/ahp_calculate`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ matrix }),
+      // body: JSON.stringify({ matrix }),
+      body: JSON.stringify( payload ),
     });
   
     if (!response.ok) {

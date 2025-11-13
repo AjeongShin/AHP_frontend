@@ -1,7 +1,7 @@
 import React from 'react';
 import { Typography, Table, Select } from 'antd';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const scaleOptions = [
 //   { value: 1 / 9, label: '1/9' }, { value: 1 / 8, label: '1/8' },
@@ -88,6 +88,10 @@ const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
         tableLayout="fixed" 
         scroll={{ x: true }}
       />
+
+      <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
+        Note: Greyed-out cells are inactive based on the Best-Worst Method rules.
+      </Text>
     </div>
   );
 };

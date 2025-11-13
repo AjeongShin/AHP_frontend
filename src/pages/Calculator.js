@@ -15,10 +15,17 @@ const METHODS = {
   BWM: 'bwm'
 };
 
+const AHP_VARIANTS = {
+  Origin: 'origin',
+  FUZZY: 'fuzzy',
+  L_FUZZY: 'linguistic fuzzy'
+};
+
 const BWM_VARIANTS = {
   LINEAR: 'linear',
   NONLINEAR: 'nonlinear',
-  FUZZY: 'fuzzy'
+  FUZZY: 'fuzzy',
+  L_FUZZY: 'linguistic fuzzy'
 };
 
 function Calculator() {
@@ -27,11 +34,16 @@ function Calculator() {
   const location = useLocation();
 
   const [method, setMethod] = useState(null);
+  const [methodChanged, setMethodChanged] = useState(false);
   const [bwmVariant, setBwmVariant] = useState(null);
+  const [ahpVariant, setAhpVariant] = useState(null);
+  const [criteriaCount, setCriteriaCount] = useState(0);
+  const [criteria, setCriteria] = useState([]); // confirmed criteria
 
   useEffect(() => {
     if (location.state?.reset) {
       setMethod(null);
+      setAhpVariant(null);
       setBwmVariant(null);
       navigate('/calculator', { replace: true, state: null });
       return;
@@ -49,14 +61,25 @@ function Calculator() {
   // transfer to main page from Ahp/Bwm component
   const handleBackFromMethod = () => {
     setMethod(null);
+    setAhpVariant(null);  
     setBwmVariant(null);
   }
+
+  const handleCriteriaChange = (updatedCriteria) => {
+    setCriteria(updatedCriteria);
+    setCriteriaCount(updatedCriteria.length);
+  };
 
   // Dropdown menu configuration
   const dropdownItems = [
     { 
       key: METHODS.AHP, 
-      label: "AHP (Analytic Hierarchy Process)" 
+      label: "AHP (Analytic Hierarchy Process)",
+      children: [
+        { key: `${METHODS.AHP}-${AHP_VARIANTS.Origin}`, label: "AHP" },
+        { key: `${METHODS.AHP}-${AHP_VARIANTS.FUZZY}`, label: "Fuzzy AHP" },
+        { key: `${METHODS.AHP}-${AHP_VARIANTS.L_FUZZY}`, label: "Linguistic Fuzzy AHP" },
+      ], 
     },
     {
       key: METHODS.BWM,
@@ -65,6 +88,7 @@ function Calculator() {
         { key: `${METHODS.BWM}-${BWM_VARIANTS.LINEAR}`, label: "Linear BWM" },
         { key: `${METHODS.BWM}-${BWM_VARIANTS.NONLINEAR}`, label: "Non-linear (Ratio) BWM" },
         { key: `${METHODS.BWM}-${BWM_VARIANTS.FUZZY}`, label: "Fuzzy BWM" },
+        { key: `${METHODS.BWM}-${BWM_VARIANTS.L_FUZZY}`, label: "Linguistic Fuzzy BWM" },
       ],
     },
   ];
@@ -75,9 +99,13 @@ function Calculator() {
  * @param {Object} menuInfo - Ant Design menu click event
  */
   const onMenuClick = ({ key }) => {
-    if (key === METHODS.AHP) {
+    setMethodChanged(prev => !prev);
+    // Handle AHP variant selection
+    // if (key === METHODS.AHP) {
+    if (key.startsWith(`${METHODS.AHP}-`)) {
       setMethod(METHODS.AHP);
-      setBwmVariant(null);
+      const variant = key.replace(`${METHODS.AHP}-`, '');
+      setAhpVariant(variant);
       return;
     }
     
@@ -89,6 +117,33 @@ function Calculator() {
     }
   };
 
+  const methodSelector = (
+    <Space direction="vertical" style={{ width: "100%" }}>
+      <Text strong>Select Method:</Text>
+
+      <Dropdown
+        trigger={["hover"]}
+        placement="bottomLeft"
+        menu={{ items: dropdownItems, onClick: onMenuClick }}  
+      >
+        <Button block>
+          {method
+            ? method === "ahp"
+              ? `AHP / ${ahpVariant}`
+              : `BWM / ${bwmVariant}`
+            : "Choose a method"} <DownOutlined />
+        </Button>
+      </Dropdown>
+
+
+      {/* {method && (
+        <Text type="secondary">
+          Selected: {method === "ahp" ? `AHP / ${ahpVariant}` : `BWM / ${bwmVariant}`}
+        </Text>
+      )} */}
+    </Space> 
+  );
+
   // 1. Before selecting a method
   if (!method) {
     return (
@@ -96,33 +151,11 @@ function Calculator() {
         <Header_custom /> 
         <Layout style={{ minHeight: '100vh'}}>
           <Sider width={420} style={{ background: token.colorBgContainer, padding: token.paddingLG, borderRight: `1px solid ${token.colorSplit}` }}>
-            <Title level={2} style={{ marginTop: 0, marginBottom: 24 }}>
-              Pairwise Comparison Tool
-            </Title>
+              <Title level={2} style={{ marginTop: 0, marginBottom: 24 }}>
+                Pairwise Comparison Tool
+              </Title>
 
-            <Space direction="vertical" style={{ width: "100%" }}>
-              <Text strong>Select Method:</Text>
-
-              <Dropdown
-                trigger={["hover"]}
-                placement="bottomLeft"
-                menu={{ items: dropdownItems, onClick: onMenuClick }}  
-              >
-                <Button block>
-                  {method
-                    ? method === "ahp"
-                      ? "AHP"
-                      : `BWM / ${bwmVariant}`
-                    : "Choose a method"} <DownOutlined />
-                </Button>
-              </Dropdown>
-
-              {method && (
-                <Text type="secondary">
-                  Selected: {method === "ahp" ? "AHP" : `BWM / ${bwmVariant}`}
-                </Text>
-              )}
-            </Space>
+              {methodSelector}
           </Sider>
         </Layout>
       </>
@@ -134,10 +167,31 @@ function Calculator() {
     <>
       <Header_custom /> 
       <Layout style={{ minHeight: '100vh' }}>
-        <Content style={{ padding: 0 }}>
-          {method === 'ahp' && <Ahp onBack={handleBackFromMethod} />}
+        {/* <Content style={{ padding: 0 }}>
+          {method === 'ahp' && <Ahp onBack={handleBackFromMethod} variant={ahpVariant} />}
           {method === 'bwm' && <Bwm onBack={handleBackFromMethod} variant={bwmVariant} />}
-        </Content>
+        </Content> */}
+
+      <Content style={{ padding: 0 }}>
+        {method === 'ahp' && 
+          <Ahp 
+            onBack={handleBackFromMethod} 
+            variant={ahpVariant} 
+            methodSelector={methodSelector} 
+            methodChanged={methodChanged}
+            criteriaCount={criteriaCount}
+            criteria={criteria}
+            updateCriteria={handleCriteriaChange} />}
+        {method === 'bwm' && 
+          <Bwm 
+            onBack={handleBackFromMethod} 
+            variant={bwmVariant} 
+            methodSelector={methodSelector} 
+            methodChanged={methodChanged}
+            criteriaCount={criteriaCount}
+            criteria={criteria}
+            updateCriteria={handleCriteriaChange}/>}
+      </Content> 
       </Layout>
     </>
   );

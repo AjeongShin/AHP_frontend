@@ -1,7 +1,8 @@
 import React from 'react';
-import { Typography, Table, Select } from 'antd';
+import { Typography, Table, Select, Popover, Card } from 'antd';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const scaleOptions = [
   { value: 'EI', label: 'EI' },
@@ -95,17 +96,55 @@ const FuzzyMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
 
   return (
     <div style={{ marginTop: 16 }}>
-      <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Editable BWM Matrix</Title>
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        pagination={false}
-        bordered
-        size="small"
-        tableLayout="fixed" 
-        scroll={{ x: true }}
-      />
-    </div>
+      <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start', // next to the title
+        marginBottom: 10,
+      }}
+      >
+        <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Editable BWM Matrix</Title>
+
+        <Popover
+        title={
+          <span style={{fontSize: 18, fontWeight: 'bold'}}>
+          Fuzzy Scale Information
+          </span>
+        }
+          trigger="click"
+          content={
+            <Card
+              size="small"
+              style={{ width: 400 }}
+              fontSize={20}
+              bodyStyle={{ fontSize: 16, padding: 12, marginInline:10 }} 
+            >
+              <div><p><strong>EI (Equal Importance):</strong> (1, 1, 1)</p></div>
+              <div><p><strong>WI (Weak Importance):</strong> (2/3, 1, 3/2)</p></div>
+              <div><p><strong>FI (Fair Importance):</strong> (3/2, 2, 5/2)</p></div>
+              <div><p><strong>VI (Very Importance):</strong> (5/2, 3, 7/2)</p></div>
+              <div><p><strong>AI (Absolute Importance):</strong> (7/2, 4, 9/2)</p></div>
+              <hr />
+             <div><em>Note: Each cell shows how much the row criterion is preferred over the column criterion.</em></div>
+         
+            </Card>
+          }
+        >
+          <QuestionCircleOutlined style={{ marginLeft: 8, cursor: 'pointer', fontSize: 20 }} />
+        </Popover>
+      </div>
+        
+        <Table
+          dataSource={dataSource}
+          columns={columns}
+          pagination={false}
+          bordered
+          size="small"
+          tableLayout="fixed" 
+          scroll={{ x: true }}
+        />
+      </div>
   );
 };
 
