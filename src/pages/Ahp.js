@@ -27,6 +27,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
   const [lambdaMax, setLambdaMax] = useState(null);
   const [ci, setCi] = useState(null);
   const [cr, setCr] = useState(null);
+  const [inconsistency_ratios, setInconsistencyRatio] = useState([]);
 
   // Extra state for fuzzy methods
   const [sorted_criteria, setSortedCriteria] = useState([]);
@@ -35,6 +36,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
   const [best, setBest] = useState(null); 
   const [worst, setWorst] = useState(null);
   const [extra, setExtra] = useState([]);
+
 
   const { token } = theme.useToken();
 
@@ -70,6 +72,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     setLambdaMax(null);
     setCi(null);
     setCr(null);
+    setInconsistencyRatio([]);
     setStage(null);
     setExtra([]);
     message.success('Matrix imported.');
@@ -123,6 +126,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     setLambdaMax(null);
     setCi(null);
     setCr(null);
+    setInconsistencyRatio([]);
     setExtra([]);
   }, [methodChanged, variant]); 
 
@@ -147,7 +151,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     };
 
     try {
-      const { crisp_weights, lower_weights, upper_weights, sorted_criteria, lambdaMax, ci, cr } = await AhpWeights(payload);
+      const { crisp_weights, lower_weights, upper_weights, sorted_criteria, lambdaMax, ci, cr, inconsistency_ratios} = await AhpWeights(payload);
       setWeights(crisp_weights);
       setLWeights(lower_weights ?? []);
       setUWeights(upper_weights ?? []);
@@ -155,6 +159,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
       setLambdaMax(lambdaMax ?? []);
       setCi(ci);
       setCr(cr);
+      setInconsistencyRatio(inconsistency_ratios ?? []);
       setExtra(extra ?? []);
     } catch (err) {
       alert(err.message);
@@ -178,6 +183,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     setLambdaMax(null);
     setCi(null);
     setCr(null);
+    setInconsistencyRatio([]);
     setExtra([]);
   };
 
@@ -221,6 +227,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     setLambdaMax(null);
     setCi(null);
     setCr(null);
+    setInconsistencyRatio([]);
     setExtra([]);
     setStage(null);
   };
@@ -417,7 +424,9 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                     sorted_criteria={sorted_criteria}
                     ci={ci}
                     cr={cr}
+                    inconsistency_ratios={inconsistency_ratios}
                     extra={extra}
+                    matrix={matrix}
                   />
                 </>
               )}

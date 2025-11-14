@@ -1,9 +1,10 @@
 import React from 'react';
 import { Typography, Card, Descriptions, theme, Table, Space, Button } from 'antd';
 import {
-  BarChart, Bar, XAxis, YAxis,
-  Tooltip, CartesianGrid, ResponsiveContainer, LabelList,
+  BarChart, Bar, XAxis, YAxis, Scatter, ReferenceLine, 
+  Tooltip, CartesianGrid, ResponsiveContainer, LabelList, Legend,
 } from 'recharts';
+// import * as d3 from "d3";
 import { exportWeightsXlsx } from '../utils/matrixExport';
 import { DownloadOutlined } from '@ant-design/icons';
 
@@ -88,9 +89,12 @@ const Results = ({
   sorted_criteria = [], 
   ci, 
   cr,
+  inconsistency_ratios = [],
   extra = {},
+  matrix=[],
  }) => {
   const { token } = theme.useToken();
+  const [vizMode, setVizMode] = React.useState('lollipop');
 
   /**
    * Round number to specified decimal places
@@ -174,6 +178,86 @@ const Results = ({
       render: (v) => (typeof v === 'number' ? v.toFixed(3) : '0.000') },
   ];
   
+
+  // 3) Prepare data for Individual Inconsistency (lollipop chart)
+  const inconsistencyData = [];
+  const n = criteria.length;
+  for (let i = 0; i < n; i++) {
+    for (let j = i; j < n; j++) {       
+      inconsistencyData.push({
+        i,
+        j,
+        pair: `${criteria[i]} vs ${criteria[j]}`,
+        value: inconsistency_ratios[i][j],
+        declared: matrix[i][j],
+      });
+    }
+  }
+  // lollipop
+  const ratioData = inconsistencyData.map(d => ({
+    pair: d.pair,
+    value: d.value,
+  }));
+
+  // barchart
+  const barData = inconsistencyData.map(d => ({
+    pair: d.pair,
+    declared: d.declared,
+    implied: d.value,
+  }));
+
+  // Calculate max value for lollipop chart Y-axis scale
+  const maxRatioValue = Math.max(...ratioData.map(d => d.value), 1.5);
+  const maxV = Math.round(maxRatioValue * 100) / 100;  
+  const tickStep = 0.5;
+  const maxTick = Math.ceil(maxRatioValue / tickStep) * tickStep; 
+
+  const yTicks = [];
+  for (let t = 0; t <= maxTick + 1e-9; t += tickStep) {
+    yTicks.push(Number(t.toFixed(2))); 
+  }
+
+    // Lollipop chart shape component
+  const LollipopShape = (props) => {
+    console.log('value:', props.payload.value);
+    console.log('background:', props.background);
+    const { x, width, payload, background } = props;
+    const value = payload.value;
+
+    const centerX = x + width / 2;
+
+    // Y
+    const yZero = background.y + background.height;  
+    const totalHeight = background.height;           
+    const yScale = (v) => yZero - (v / maxV) * totalHeight;
+
+    // baseline = 1
+    const baselineY = yScale(1);
+    const valueY = yScale(value);
+
+    return (
+      <g>
+        <line
+          x1={centerX}
+          y1={baselineY}
+          x2={centerX}
+          y2={valueY}
+          stroke={token.colorPrimary}
+          strokeWidth={2}
+        />
+        <circle
+          cx={centerX}
+          cy={valueY}
+          r={5}
+          fill={token.colorPrimary}
+          stroke="#fff"
+          strokeWidth={1}
+        />
+      </g>
+    );
+  };
+
+
   /**
    * Export weights to Excel file
    */
@@ -340,6 +424,94 @@ const Results = ({
           Export Weights (.xlsx)
         </Button>
       </Space>
+
+      {/* Individual Inconsistency Visualization */}
+      <Card>
+        <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+          <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Individual Inconsistency</Title>
+          <select
+            value={vizMode}
+            onChange={(e) => setVizMode(e.target.value)}
+            style={{ padding: '2px 6px', borderRadius: 4 }}
+          >
+            <option value="lollipop">Lollipop</option>
+            <option value="bar">Bar</option>
+          </select>
+        </Space>
+      
+        <div style={{ width: "100%", overflowX: "auto" }}>
+          <div style={{ width: `${ratioData.length * 50}px` }}>  
+            
+            {/* lollipop */}
+            {vizMode === 'lollipop'? (
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart
+                data={ratioData}
+                layout="horizontal"
+                margin={{ top: 20, right: 40, left: 80, bottom: 80 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  type="category" 
+                  dataKey="pair" 
+                  tick={{ angle: -30, textAnchor: "end", fontSize: 10 }}
+                  interval={0} 
+                  />
+                <YAxis type="number" domain={[0, maxV]} ticks={yTicks}/>
+                <ReferenceLine y={1} strokeDasharray="4 4" stroke="#000"/>
+
+                <Tooltip
+                  formatter={(v) => [v, "Ratio"]}
+                  labelStyle={{ color: "#000" }}
+                  itemStyle={{ color: "#000" }}
+                />
+
+                {/* Stick and Dot combined */}
+                <Bar
+                  dataKey="value"
+                  shape={<LollipopShape />}
+                  isAnimationActive={false}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+            ) : (
+            // BAR CHART (a_ij vs w_i/w_j)
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart
+                data={barData} 
+                margin={{ top: 20, right: 40, left: 80, bottom: 80 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="pair"
+                  interval={0}
+                  tick={{ angle: -30, textAnchor: "end", fontSize: 10 }}
+                />
+                <YAxis
+                  type="number"
+                  domain={[0, 'auto']}
+                  tick={{ fontSize: 11 }}
+                />
+                <Tooltip labelStyle={{ color: '#000' }} itemStyle={{ color: '#000' }} />
+                <Legend 
+                  layout="horizontal"
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={{ paddingBottom: 8 }}
+                  />
+
+                {/* a_ij (yellow) */}
+                <Bar dataKey="declared" name="a_ij" fill="#fbc02d" />
+
+                {/* w_i / w_j (blue) */}
+                <Bar dataKey="implied" name="w_i / w_j" fill={token.colorPrimary} />
+              </BarChart>
+            </ResponsiveContainer> 
+            )}
+          </div>
+        </div>
+      </Card>
+
     </div>
   );
 };
