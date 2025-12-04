@@ -9,7 +9,8 @@ import { BwmWeights } from '../api/fetchWeights';
 import { importMatrixFile } from '../utils/matrixImport';
 import { validateBWM } from '../utils/validators';
 import { UploadOutlined } from '@ant-design/icons';
-
+import { exportMatrixXlsx } from '../utils/matrixExport';
+import { DownloadOutlined } from '@ant-design/icons';
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -32,7 +33,9 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
   const [cr, setCr] = useState(null);
   const [best, setBest] = useState(null); 
   const [worst, setWorst] = useState(null);
+  const [inconsistency_ratios, setInconsistencyRatio] = useState([]);
   const [extra, setExtra] = useState([]);
+  const [fileName, setFileName] = useState('');
 
   const { token } = theme.useToken();
 
@@ -106,7 +109,7 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
    */
   // Step 1: Set number of criteria
   const handleSetCriteriaNumber = () => {
-    const count = Math.max(2, Math.min(100, criteriaCount));
+    const count = Math.max(2, Math.min(100, localCount));
     // setCriteriaCount(count);
     // setCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
     setLocalCount(count);
@@ -179,13 +182,14 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     };
 
     try {
-      const { crisp_weights, lower_weights, upper_weights, sorted_criteria, ci, cr } = await BwmWeights(payload);
+      const { crisp_weights, lower_weights, upper_weights, sorted_criteria, ci, cr, inconsistency_ratios } = await BwmWeights(payload);
       setWeights(crisp_weights);
       setLWeights(lower_weights);
       setUWeights(upper_weights);
       setSortedCriteria(sorted_criteria);
       setCi(ci);
       setCr(cr);
+      setInconsistencyRatio(inconsistency_ratios ?? []);
       setExtra(extra);
     } catch (err) {
       alert(err.message);
@@ -253,6 +257,32 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     setStage(null);
   };
   
+  const handleExportXlsx = () => {
+    exportMatrixXlsx({
+      method: 'bwm',
+      variant,
+      criteria,
+      matrix,
+      bestIdx,
+      worstIdx,
+      filename: fileName || undefined,
+    });
+  }; 
+
+  const numericMatrixForViz =
+    variant === 'linguistic fuzzy'
+      ? convertMatrixToValues(matrix)
+      : matrix;
+
+  const bestRowForViz =
+    bestIdx >= 0 && Array.isArray(numericMatrixForViz[bestIdx])
+      ? [...numericMatrixForViz[bestIdx]]
+      : null;
+
+  const worstColForViz =
+    worstIdx >= 0 && Array.isArray(numericMatrixForViz)
+      ? numericMatrixForViz.map(row => row[worstIdx])
+      : null;
     return (
           <div
             style={{
@@ -457,6 +487,13 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                 )}
                 </div>
 
+          {/* Input Matrix Export Button */}
+          <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+              Export Input Matrix (.xlsx)
+            </Button>
+          </Space>
+
                 {crisp_weights.length > 0 && (
                     <>
                     <Divider />
@@ -467,9 +504,15 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                         lower_weights={lower_weights}
                         upper_weights={upper_weights}
                         criteria={criteria}
+                        bestIdx={bestIdx}
+                        worstIdx={worstIdx}
+                        bestRow={bestRowForViz}      
+                        worstCol={worstColForViz}
                         sorted_criteria={sorted_criteria}
                         ci={ci}
                         cr={cr}
+                        inconsistency_ratios={inconsistency_ratios}
+                        matrix={matrix} 
                         extra={extra}
                     />
                     </>

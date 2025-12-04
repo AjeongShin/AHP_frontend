@@ -9,6 +9,8 @@ import { AhpWeights } from '../api/fetchWeights';
 import { importMatrixFile } from '../utils/matrixImport';
 import { validateAHP } from '../utils/validators';
 import { UploadOutlined } from '@ant-design/icons';
+import { exportMatrixXlsx } from '../utils/matrixExport';
+import { DownloadOutlined } from '@ant-design/icons';
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -37,7 +39,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
   const [worst, setWorst] = useState(null);
   const [extra, setExtra] = useState([]);
 
-
+  const [fileName, setFileName] = useState('');
   const { token } = theme.useToken();
 
   /**
@@ -232,6 +234,18 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     setStage(null);
   };
   
+  const handleExportXlsx = () => {
+    exportMatrixXlsx({
+      method: 'ahp',
+      variant,
+      criteria,
+      matrix,
+      bestIdx: null,
+      worstIdx: null,
+      filename: fileName || undefined,
+    });
+  }; 
+
   return (
       <div
         style={{
@@ -409,6 +423,13 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
               />
             )}
             </div>
+
+          {/* Input Matrix Export Button */}
+          <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+              Export Input Matrix (.xlsx)
+            </Button>
+          </Space>
 
               {crisp_weights.length > 0 && lambdaMax !== null && (
                 <>
