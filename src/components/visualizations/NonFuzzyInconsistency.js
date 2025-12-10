@@ -34,6 +34,25 @@ const NonFuzzyInconsistency = ({
   const isBwmNonFuzzy = method === 'bwm' && ['linear', 'nonlinear'].includes(variant);
   const n = criteria.length;
 
+  //render guard
+  const isReady =
+    Array.isArray(criteria) &&
+    criteria.length > 0 &&
+    Array.isArray(crisp_weights) &&
+    crisp_weights.length === criteria.length &&
+    inconsistency_ratios &&
+    matrix;
+
+  if (!isReady) {
+    return (
+      <Card style={{ marginTop: 24 }}>
+        <Typography.Text type="secondary">
+          Calculating inconsistency…
+        </Typography.Text>
+      </Card>
+    );
+  }
+
   // Prepare inconsistency data
   let inconsistencyData = [];
 
@@ -92,7 +111,13 @@ const NonFuzzyInconsistency = ({
   }
 
   // Prepare chart data
-  const ratioData = inconsistencyData.map(d => ({
+  // const ratioData = inconsistencyData.map(d => ({
+  //   pair: d.pair,
+  //   value: d.value,
+  // }));
+  const ratioData = inconsistencyData
+  .filter(d => typeof d.value === 'number' && !Number.isNaN(d.value))
+  .map(d => ({
     pair: d.pair,
     value: d.value,
   }));
@@ -161,8 +186,11 @@ const NonFuzzyInconsistency = ({
   // Y-axis scale for lollipop
   let minTick = 0, maxTick = 0, yTicks = [];
   if (ratioData.length > 0) {
-    const maxRatioValue = Math.max(...ratioData.map(d => d.value), 1.5);
-    const minRatioValue = Math.min(...ratioData.map(d => d.value));
+    const ratioValues = ratioData.map(d => d.value);
+    const maxRatioValue = Math.max(...ratioValues, 1.5);
+    const minRatioValue = Math.min(...ratioValues, 0.5);
+    // const maxRatioValue = Math.max(...ratioData.map(d => d.value), 1.5);
+    // const minRatioValue = Math.min(...ratioData.map(d => d.value));
     const tickStep = 0.5;
     maxTick = Math.ceil(maxRatioValue / tickStep) * tickStep;
     minTick = Math.max(0, Math.floor(minRatioValue * 0.8 / tickStep) * tickStep);
@@ -196,6 +224,8 @@ const NonFuzzyInconsistency = ({
     if (!payload || !background) return null;
 
     const value = payload.value;
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+
     const centerX = x + width / 2;
     const yBottom = background.y + background.height;
     const totalHeight = background.height;
@@ -204,6 +234,8 @@ const NonFuzzyInconsistency = ({
 
     const baselineY = yScale(1);
     const valueY = yScale(value);
+
+    if (!Number.isFinite(baselineY) || !Number.isFinite(valueY)) return null;
 
     return (
       <g>
@@ -240,7 +272,12 @@ const NonFuzzyInconsistency = ({
   // Heatmap color
   const getHeatmapColor = (diff) => {
     const maxDiff = heatMax || 0;
-    const ratio = Math.max(0, Math.min(1, maxDiff > 0 ? diff / maxDiff : 0));
+    const safeDiff =
+      typeof diff === 'number' && Number.isFinite(diff)
+        ? diff
+        : 0;
+    // const ratio = Math.max(0, Math.min(1, maxDiff > 0 ? diff / maxDiff : 0));
+    const ratio = Math.max(0, Math.min(1, maxDiff > 0 ? safeDiff / maxDiff : 0));
 
     // low(0) → high(maxDiff) 
     const from = { r: 236, g: 255, b: 229 }; // low diff (top color)
