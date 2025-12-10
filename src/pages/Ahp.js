@@ -1,30 +1,45 @@
-import React, { useState } from 'react';
-import { Layout, Typography, Button, Divider, Space, InputNumber, theme, Upload, message, Modal } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Typography, Button, Divider, Space, InputNumber, Select, theme, Upload, message, Modal } from 'antd';
 import PairwiseInput from '../components/PairwiseInput';
 import PairwiseMatrix from '../components/PairwiseMatrix';
+import L_FuzzyMatrix, { convertMatrixToValues } from '../components/AhpFuzzyMatrix';
+import FuzzyMatrix from '../components/AhpFuzzyMatrixTfn';
 import Results from '../components/Results';
 import { AhpWeights } from '../api/fetchWeights';
-import { importMatrixFile } from '../utils/matrixImport';
-import { validateAHP } from '../utils/validators';
+import { importMatrixFile, importFuzzyMatrixFile, importAHPLinguisticMatrixFile} from '../utils/matrixImport';
+import { validateAHP, validateFuzzyAHP, validateLinguisticFuzzyAHP} from '../utils/validators';
 import { UploadOutlined } from '@ant-design/icons';
+import { exportMatrixXlsx } from '../utils/matrixExport';
+import { DownloadOutlined } from '@ant-design/icons';
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
-function Ahp() {
+function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, updateCriteria}) {
   // State management
   const [stage, setStage] = useState("number"); // number | text | null | edit
-  const [criteriaCount, setCriteriaCount] = useState(0);
-  const [criteria, setCriteria] = useState([]); // confirmed criteria
+  // const [criteriaCount, setCriteriaCount] = useState(0);
+  // const [criteria, setCriteria] = useState([]); // confirmed criteria
+  const [localCount, setLocalCount] = useState(criteria.length || criteriaCount || 0);
   const [tempCriteria, setTempCriteria] = useState([]); // temp criteria
   const [matrix, setMatrix] = useState([]); 
 
   // Result state
-  const [weights, setWeights] = useState([]);
+  const [crisp_weights, setWeights] = useState([]);
   const [lambdaMax, setLambdaMax] = useState(null);
   const [ci, setCi] = useState(null);
   const [cr, setCr] = useState(null);
+  const [inconsistency_ratios, setInconsistencyRatio] = useState([]);
 
+  // Extra state for fuzzy methods
+  const [sorted_criteria, setSortedCriteria] = useState([]);
+  const [lower_weights, setLWeights] = useState([]);
+  const [upper_weights, setUWeights] = useState([]);
+  const [best, setBest] = useState(null); 
+  const [worst, setWorst] = useState(null);
+  const [extra, setExtra] = useState([]);
+
+  const [fileName, setFileName] = useState('');
   const { token } = theme.useToken();
 
   /**
@@ -33,10 +48,32 @@ function Ahp() {
    * @param {File} file - The uploaded file
    * @returns {boolean} - Returns false to prevent default upload behavior
    */
+  const templateHrefMap = {
+    'origin': `${process.env.PUBLIC_URL}/templates/AHP_matrix_template.xlsx`,
+    'fuzzy': `${process.env.PUBLIC_URL}/templates/AHP_fuzzy_tfn_template.xlsx`,
+    'linguistic fuzzy': `${process.env.PUBLIC_URL}/templates/AHP_linguistic_template.xlsx`,
+  };
+
+  const templateHref = templateHrefMap[variant];
   const handleImport = async (file) => {
   try {
-    const { criteria: c, matrix: M } = await importMatrixFile(file);
-    const res = validateAHP(c, M);
+    let c, M, res
+
+    if (variant === 'origin'){
+    ({ criteria: c, matrix: M } = await importMatrixFile(file));
+    res = validateAHP(c, M);
+    }
+
+    if (variant === 'fuzzy'){
+    ({ criteria: c, matrix: M } = await importFuzzyMatrixFile(file));
+    res = validateFuzzyAHP(c, M);
+    }
+
+    if (variant === 'linguistic fuzzy'){
+    ({ criteria: c, matrix: M } = await importAHPLinguisticMatrixFile(file));
+    res = validateLinguisticFuzzyAHP(c, M);
+    }
+
     if (!res.ok) {
       Modal.error({
         title: 'Invalid AHP matrix',
@@ -44,17 +81,25 @@ function Ahp() {
         width: 560,
       });
       return false;
-    }
+    } 
+  
     // Apply validated data
-    setCriteria(c);
+    // setCriteria(c);
+    updateCriteria(c);
     setMatrix(M);
+    setLocalCount(c.length);
     
     // Value initialization
     setWeights([]);
+    setLWeights([]);
+    setUWeights([]);
+    setSortedCriteria([]);
     setLambdaMax(null);
     setCi(null);
     setCr(null);
+    setInconsistencyRatio([]);
     setStage(null);
+    setExtra([]);
     message.success('Matrix imported.');
   } catch (e) {
     Modal.error({ title: 'Import error', content: e.message || String(e) });
@@ -67,20 +112,48 @@ function Ahp() {
    */
   // Step 1: Set number of criteria
   const handleSetCriteriaNumber = () => {
-    const count = Math.max(2, Math.min(5, criteriaCount));
-    setCriteriaCount(count);
-    setCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
+    const count = Math.max(2, Math.min(100, localCount));
+    // setCriteriaCount(count);
+    setLocalCount(count);
+    // setCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
+    updateCriteria(Array.from({ length: count }, (_, i) => `Criterion ${i + 1}`));
     setStage("text");
   };
 
-  // Step 2: Confirm criteria names
+  // Step 2: Confirm criteria names and initialize matrix
   const handleConfirmCriteria = () => {
     const count = criteria.length;
+    const diagonalValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
+    const initialValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
     setMatrix(Array.from({ length: count }, (_, i) =>
-      Array.from({ length: count }, (_, j) => (i === j ? 1 : 1))
+      Array.from({ length: count }, (_, j) => (i === j ? diagonalValue : initialValue))
     ));
     setStage(null); // move to default stage
   };
+
+  useEffect(() => {
+    if (!criteria.length) return; // no criteria yet
+    handleConfirmCriteria();
+    setWeights([]);
+    setLWeights([]);
+    setUWeights([]);
+    setSortedCriteria([]);
+    setLambdaMax(null);
+    setCi(null);
+    setCr(null);
+    setInconsistencyRatio([]);
+    setExtra([]);
+  }, [methodChanged, variant]); 
 
   // Calculate weights and consistency metrics
   const handleSubmit = async () => {
@@ -90,12 +163,29 @@ function Ahp() {
       return;
     }
 
+    const numericMatrix = convertMatrixToValues(matrix);
+    const processedMatrix = variant === 'linguistic fuzzy' ? numericMatrix : matrix; 
+
+    const payload = { 
+       variant,
+       n: criteria.length, 
+       criteria,
+       bestIdx: null,
+       worstIdx: null,
+       matrix: processedMatrix,
+    };
+
     try {
-      const { weights, lambdaMax, ci, cr } = await AhpWeights(matrix);
-      setWeights(weights);
-      setLambdaMax(lambdaMax);
+      const { crisp_weights, lower_weights, upper_weights, sorted_criteria, lambdaMax, ci, cr, inconsistency_ratios} = await AhpWeights(payload);
+      setWeights(crisp_weights);
+      setLWeights(lower_weights ?? []);
+      setUWeights(upper_weights ?? []);
+      setSortedCriteria(sorted_criteria ?? []);
+      setLambdaMax(lambdaMax ?? []);
       setCi(ci);
       setCr(cr);
+      setInconsistencyRatio(inconsistency_ratios ?? []);
+      setExtra(extra ?? []);
     } catch (err) {
       alert(err.message);
     }
@@ -104,13 +194,22 @@ function Ahp() {
   // Reset everything
   const handleReset = () => {
     setStage("number");
-    setCriteriaCount(0);
-    setCriteria([]);
+    // setCriteriaCount(0);
+    // setCriteria([]);
+    updateCriteria([]);
+    setLocalCount(0);
+    setBest(null);
+    setWorst(null);
     setMatrix([]);
     setWeights([]);
+    setLWeights([]);
+    setUWeights([]);
+    setSortedCriteria([]);
     setLambdaMax(null);
     setCi(null);
     setCr(null);
+    setInconsistencyRatio([]);
+    setExtra([]);
   };
 
   // Enter edit mode for criteria
@@ -122,36 +221,84 @@ function Ahp() {
   // Save changes from edit mode
   const handleSaveEdit = () => {
     const count = tempCriteria.length;
+    const diagonalValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
+    const defaultValue = 
+      variant === 'linguistic fuzzy' 
+        ? 'EI' 
+        : variant === 'fuzzy' 
+          ? [1, 1, 1] 
+          :  1;
+
     const newMatrix = Array.from({ length: count }, (_, i) =>
       Array.from({ length: count }, (_, j) => {
-        if (i === j) return 1;
-        return matrix?.[i]?.[j] ?? 1;
+        if (i === j) return diagonalValue;
+        return matrix?.[i]?.[j] ?? defaultValue;
       })
     );
-    setCriteria([...tempCriteria]);
+    // setCriteria([...tempCriteria]);
+    updateCriteria([...tempCriteria]);
     setMatrix(newMatrix);
+    setBest(null);
+    setWorst(null);
     setWeights([]);
+    setLWeights([]);
+    setUWeights([]);
+    setSortedCriteria([]);
     setLambdaMax(null);
     setCi(null);
     setCr(null);
+    setInconsistencyRatio([]);
+    setExtra([]);
     setStage(null);
   };
   
+  const handleExportXlsx = () => {
+    exportMatrixXlsx({
+      method: 'ahp',
+      variant,
+      criteria,
+      matrix,
+      bestIdx: null,
+      worstIdx: null,
+      filename: fileName || undefined,
+    });
+  }; 
+
+  const headerExtra = (
+    <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+      Export Input Matrix (.xlsx)
+    </Button>
+  );
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={420} style={{ 
-        background: token.colorBgContainer, 
-        padding: token.paddingLG, 
-        borderRight: `1px solid ${token.colorSplit}` 
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          minHeight: '100vh',
+          background: token.colorBgLayout,
+        }}
+      >
+        <div
+          style={{
+            width: 420,
+            background: token.colorBgContainer,
+            padding: token.paddingLG,
+            borderRight: `1px solid ${token.colorSplit}`,
+          }}
+        >
         <Title level={1} style={{ marginTop: 0, marginBottom: 0 }}>
           Trade Off Software
         </Title>
-        <Typography.Text type="secondary" style={{ fontSize: 16 }}>
-          Method: AHP
-        </Typography.Text>
+        <div style={{ marginTop: 24, marginBottom: 24 }}>
+          {methodSelector}
+        </div>
 
-        <div style={{ margin: '8px 0 24px' }}>
+        <div style={{ margin: '8px 0 10px' }}>
           {/* Upload CSV file */}
           <Upload
             beforeUpload={handleImport}
@@ -174,7 +321,7 @@ function Ahp() {
           </Upload>
 
           <Typography.Link
-            href={`${process.env.PUBLIC_URL}/templates/AHP_matrix_template.xlsx`}
+            href={templateHref}
             download
             style={{ display: 'inline-block', marginLeft: 10, textDecoration: 'underline' }}
           >
@@ -190,8 +337,8 @@ function Ahp() {
               <InputNumber
                 min={2}
                 max={100}
-                value={criteriaCount}
-                onChange={setCriteriaCount}
+                value={localCount}
+                onChange={(value) => setLocalCount(value ?? 0)}
               />
               <Button type="primary" onClick={handleSetCriteriaNumber}>
                 Set Criteria
@@ -209,7 +356,8 @@ function Ahp() {
           <>
             <PairwiseInput
               criteria={criteria}
-              setCriteria={setCriteria}
+              // setCriteria={setCriteria}
+              setCriteria={updateCriteria}
               editable={true}
               allowAddRemove={false}
             />
@@ -228,7 +376,8 @@ function Ahp() {
           <>
             <PairwiseInput
               criteria={stage === "edit" ? tempCriteria : criteria}
-              setCriteria={stage === "edit" ? setTempCriteria : setCriteria}
+              // setCriteria={stage === "edit" ? setTempCriteria : setCriteria}
+              setCriteria={stage === "edit" ? setTempCriteria : updateCriteria}
               editable={stage === "edit" || stage === "text"}
               allowAddRemove={stage === "edit"}
             />
@@ -265,38 +414,79 @@ function Ahp() {
             </Space>
           </>
         )}
-      </Sider>
 
-      <Layout>
-        <Content style={{ padding: token.paddingLG, background: token.colorBgLayout }}>
+        { stage === null && !!best && !!worst &&  (
+        <Space style={{ marginTop: 16 }}>
+            <Button
+                type="primary"
+                onClick={handleSubmit}
+                style={{ fontSize: 16, width: 180, fontWeight: 600 }}
+            >
+                Calculate
+            </Button>
+        </Space>
+        )}
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0, padding: token.paddingLG, background: token.colorBgLayout }}>
           {criteria.length > 0 && matrix.length > 0 && (
             <>
+            <div style={{ width: '100%', overflowX: 'auto' }}>
+            {variant === 'linguistic fuzzy' ? (
+              <L_FuzzyMatrix
+                matrix={matrix}
+                setMatrix={setMatrix}
+                criteria={criteria}
+                extra={headerExtra}
+              />
+            ) : variant === 'fuzzy' ? (
+              <FuzzyMatrix
+                matrix={matrix}
+                setMatrix={setMatrix}
+                criteria={criteria}
+                extra={headerExtra}
+              />
+            ) : (
               <PairwiseMatrix
                 matrix={matrix}
                 setMatrix={setMatrix}
                 criteria={criteria}
+                extra={headerExtra}
               />
-              {weights.length > 0 && lambdaMax !== null && (
+            )}
+            </div>
+
+          {/* Input Matrix Export Button */}
+          {/* <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+              Export Input Matrix (.xlsx)
+            </Button>
+          </Space> */}
+
+              {crisp_weights.length > 0 && lambdaMax !== null && (
                 <>
                   <Divider />
                   <Results
                     method="ahp"
-                    variant="linear"
-                    crisp_weights={weights}
-                    lower_weights={[]}  
-                    upper_weights={[]}    
+                    variant={variant?.toLowerCase?.()} 
+                    crisp_weights={crisp_weights}
+                    lower_weights={lower_weights}  
+                    upper_weights={upper_weights}    
                     criteria={criteria}
                     lambdaMax={lambdaMax}
+                    sorted_criteria={sorted_criteria}
                     ci={ci}
                     cr={cr}
+                    inconsistency_ratios={inconsistency_ratios}
+                    extra={extra}
+                    matrix={matrix}
                   />
                 </>
               )}
             </>
           )}
-        </Content>
-      </Layout>
-    </Layout>
+      </div>
+    </div>
   );
 }
 

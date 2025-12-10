@@ -1,100 +1,17 @@
 import React from 'react';
 import { Typography, Card, Descriptions, theme, Table, Space, Button } from 'antd';
 import {
-  BarChart, Bar, XAxis, YAxis,
-  Tooltip, CartesianGrid, ResponsiveContainer, LabelList,
+  BarChart, Bar, XAxis, YAxis, ReferenceLine, Line, LineChart, Cell,
+  Tooltip, CartesianGrid, ResponsiveContainer, LabelList, Legend,
 } from 'recharts';
-import { exportWeightsXlsx } from '../utils/matrixExport';
+// import * as d3 from "d3";
+import { exportWeightsXlsx } from '../utils/weightExport';
 import { DownloadOutlined } from '@ant-design/icons';
-
+import WeightsVisualization from './visualizations/WeightsVisualization';
+import NonFuzzyInconsistency from './visualizations/NonFuzzyInconsistency';
+import FuzzyInconsistency from './visualizations/FuzzyInconsistency';
 
 const { Title } = Typography;
-// Draw boxplot
-const BoxPlotBar = (props) => {
-  const { x, y, width, height, payload } = props;
-
-  if (!payload || height <= 0) return null;
-  
-  const { lower, center, upper } = payload;
-  if (upper <= lower) return null; // Invalid range
-
-  const centerX = x + width / 2;
-  const boxWidth = Math.min(width * 0.8, 80); // max 80px
-  const boxLeft = x + (width - boxWidth) / 2;
-  
-  // --- Q1/Q3 ---
-  const q1 = center - 0.25 * (upper - lower);
-  const q3 = center + 0.25 * (upper - lower);
-
-  // Calculate relative positions within the bar
-  const range = upper - lower;
-  if (range === 0) return null; // Avoid division by zero
-  
-  const upperY = y;
-  const lowerY = y + height * (1 - lower / upper);
-  const centerY = y + height * (1 - center / upper);
-  const q1Y =  y + height * (1 - q1 / upper);
-  const q3Y = y + height * (1 - q3 / upper);
-
-  return (
-    <g>
-      {/* 수염 (lower→Q1, Q3→upper) */}
-      <line x1={centerX} y1={lowerY} x2={centerX} y2={q1Y} stroke="#333" strokeWidth={2} />
-      <line x1={centerX} y1={q3Y} x2={centerX} y2={upperY} stroke="#333" strokeWidth={2} />
-
-      {/* Box (Q1~Q3) */}
-      <rect
-        x={boxLeft}
-        y={q3Y}
-        width={boxWidth}
-        height={q1Y - q3Y}
-        fill="rgba(24, 144, 255, 0.1)"
-        stroke="#000"
-        strokeWidth={2}
-      />
-      
-      {/* Center line (crisp weight)*/}
-      <line
-        x1={boxLeft}
-        y1={centerY}
-        x2={boxLeft + boxWidth}
-        y2={centerY}
-        stroke="#000"
-        strokeWidth={3}
-      />
-      
-      {/* Markers */}
-      {/* Upper bound marker (triangle) */}
-      <path 
-        d={`M ${centerX} ${upperY - 6} L ${centerX - 5} ${upperY + 2} L ${centerX + 5} ${upperY + 2} Z`} 
-        fill="#52c41a" 
-        stroke="#000" 
-        strokeWidth={1.5} 
-      />
-      
-      {/* Center marker (square) */}
-      <rect 
-        x={centerX - 5} 
-        y={centerY - 5} 
-        width={10} 
-        height={10} 
-        fill="#1890ff" 
-        stroke="#000" 
-        strokeWidth={2} 
-      />
-      
-      {/* Lower bound marker (circle) */}
-      <circle 
-        cx={centerX} 
-        cy={lowerY} 
-        r={5} 
-        fill="#ff4d4f" 
-        stroke="#000" 
-        strokeWidth={1.5} 
-      />
-    </g>
-  );
-};
 
 // Shows the AHP results: λmax, CI, CR, and weights chart
 // Shows the BWM results: Ranking, CI, CR, and weights chart
@@ -108,9 +25,19 @@ const Results = ({
   lambdaMax=[], 
   sorted_criteria = [], 
   ci, 
-  cr
+  cr,
+  inconsistency_ratios = [],
+  extra = {},
+  matrix=[],
+  bestIdx,
+  worstIdx,
+  bestRow,   
+  worstCol,
  }) => {
   const { token } = theme.useToken();
+  const [vizMode, setVizMode] = React.useState('lollipop');
+  const [hoveredPair, setHoveredPair] = React.useState(null); // hovering at slope chart
+  const heatmapRef = React.useRef<HTMLDivElement | null>(null); // to capture heapmap
 
   /**
    * Round number to specified decimal places
@@ -127,10 +54,10 @@ const Results = ({
    * Handles -0 edge case
    */
   const formatValue = (val) => {
-    if (Object.is(val, -0) || val === 0) return '0.000';
-    return typeof val === 'number' && !isNaN(val)
-      ? val.toFixed(3)
-      : 'N/A';
+    if (typeof val !== 'number' || !isFinite(val)) return 'N/A';
+    const eps = 1e-12;            
+    let v = Math.abs(val) < eps ? 0 : val;
+    return v.toFixed(3);
   };
 
   const cap = (str) => str ? str.toUpperCase() : '';
@@ -144,20 +71,19 @@ const Results = ({
     })
     .join(' > ');
 
+  const buildInterpretationText = (cr) => {
+    if (typeof cr !== 'number') return 'N/A';
+    return cr > 0.1
+      ? 'Judgment is inconsistent (CR > 0.1)'
+      : 'Judgment is consistent (CR < 0.1)';
+  };
+
+  const interpretationText = buildInterpretationText(cr);
+
   // Format weights with labels for chart
   const data = crisp_weights.map((w, i) => ({
     name: criteria[i] || `C${i + 1}`, 
     crisp_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
-  }));
-
-  const data_lower = lower_weights.map((w, i) => ({
-    name: criteria[i] || `C${i + 1}`, 
-    lower_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
-  }));
-
-  const data_uppder = upper_weights.map((w, i) => ({
-    name: criteria[i] || `C${i + 1}`, 
-    upper_weights: typeof w === 'number' && !isNaN(w) ? Math.round(w * 1000) / 1000 : 0,
   }));
 
   // 1) Prepare data for Linear BWM (crisp weights only)
@@ -198,11 +124,19 @@ const Results = ({
     { title: 'Criterion', dataIndex: 'name', key: 'name' },
     { title: 'Lower Weight', dataIndex: 'lower', key: 'lower',
       render: (v) => (typeof v === 'number' ? v.toFixed(3) : '0.000') },
-    { title: 'Crisp / Center', dataIndex: 'center', key: 'center',
+    { title: 'Center', dataIndex: 'center', key: 'center',
       render: (v) => (typeof v === 'number' ? v.toFixed(3) : '0.000') },
     { title: 'Upper Weight', dataIndex: 'upper', key: 'upper',
       render: (v) => (typeof v === 'number' ? v.toFixed(3) : '0.000') },
   ];
+  
+
+  // 3) Prepare data for Individual Inconsistency
+  // 3-1) NonFuzzy method 
+  const isAhpNonFuzzy = method === 'ahp' && ['origin'].includes(variant);
+  const isBwmNonFuzzy = method === 'bwm' && ['linear', 'nonlinear'].includes(variant);
+  const isAhpFuzzy = method === 'ahp' && ['fuzzy', 'linguistic fuzzy'].includes(variant);
+  const isBwmFuzzy = method === 'bwm' && ['fuzzy', 'linguistic fuzzy'].includes(variant);
   
   /**
    * Export weights to Excel file
@@ -215,14 +149,54 @@ const Results = ({
       crisp_weights,
       lower_weights,
       upper_weights,
+      lambda_max: lambdaMax,
+      CI: ci,
+      CR: cr,
+      interpretation: interpretationText,
+      ranking: sorted_criteria,
     });
-  };  
+  };
+
+  // const handleExportHeatmapPng = async () => {
+  //   if (!heatmapRef.current) return;
+
+  //   try {
+  //     const scale = 3; // resolution : 2~3 
+  //     const canvas = await html2canvas(heatmapRef.current, {
+  //       scale,
+  //       useCORS: true,
+  //       backgroundColor: null, // background color
+  //     });
+
+  //     const dataUrl = canvas.toDataURL('image/png');
+  //     const a = document.createElement('a');
+  //     a.href = dataUrl;
+  //     a.download = `heatmap_${method}_${variant || 'default'}.png`;
+  //     document.body.appendChild(a);
+  //     a.click();
+  //     document.body.removeChild(a);
+  //   } catch (e) {
+  //     console.error('Failed to export heatmap as PNG:', e);
+  //   }
+  // };
 
   return (
     <div style={{ marginTop: 24 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,              
+          // marginBottom: 16,
+        }}
+      >
       <Title level={3} style={{ marginTop: 0, marginBottom: 12 }}>
         {title}
       </Title>
+      <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+        Export Summary & Weights (.xlsx)
+      </Button>
+      </div>
 
       <Descriptions
         column={1}
@@ -272,12 +246,13 @@ const Results = ({
         {"Weights"}
       </Title>
 
-        {variant === 'linear' ? (
+        {(variant === 'linear' || variant === 'origin') ? (
           <Table
             dataSource={dataLinear.map((d, idx) => ({ key: idx, name: d.name, crisp: d.crisp }))}
             columns={columnsLinear}
             size="small"
             pagination={false}
+            tableLayout="fixed"  
             style={{ marginBottom: 24 }}
           />
         ) : (
@@ -286,86 +261,56 @@ const Results = ({
             columns={columnsInterval}
             size="small"
             pagination={false}
+            tableLayout="fixed"  
             style={{ marginBottom: 24 }}
           />
         )}
 
-      {/* Weights Visualization */}
-      <Card>
-        <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Weights Visualization</Title>
-
-        {variant === 'linear' ? (
-          // Simple bar chart for linear BWM
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={dataLinear}
-              margin={{ top: 16, right: 16, bottom: 0, left: 0 }}
-              barCategoryGap="85%"
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip labelStyle={{ color: '#000' }} itemStyle={{ color: '#000' }} />
-              <Bar dataKey="crisp" fill={token.colorPrimary} isAnimationActive={false}>
-                <LabelList
-                  dataKey="crisp"
-                  position="top"
-                  formatter={(val) => (typeof val === 'number' ? Math.round(val * 1000) / 1000 : 0)}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          // Box plot for nonlinear/fuzzy BWM
-            <ResponsiveContainer width="100%" height={380}>
-              <BarChart 
-                data={dataInterval} 
-                margin={{ top: 30, right: 16, bottom: 20, left: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis 
-                  domain={[
-                    (dataMin) => {
-                      const minLower = Math.min(...dataInterval.map(d => d.lower));
-                      return Math.max(0, minLower * 0.9); // 10% margin
-                    },
-                    (dataMax) => {
-                      const maxUpper = Math.max(...dataInterval.map(d => d.upper));
-                      return maxUpper * 1.1; // 10% margin
-                    }
-                  ]}
-                />
-                <Tooltip
-                  formatter={(val, key, { payload }) => {
-                    if (key === 'upper') {
-                      return [
-                        `Lower: ${payload.lower.toFixed(3)} | Center: ${payload.center.toFixed(3)} | Upper: ${payload.upper.toFixed(3)}`,
-                        'Weights'
-                      ];
-                    }
-                  return [val, key];
-                  }}
-                  labelStyle={{ color: '#000' }}
-                  itemStyle={{ color: '#000' }}
-                />
-                <Bar 
-                  dataKey="upper" 
-                  shape={<BoxPlotBar />}
-                  isAnimationActive={false}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-        )}
-      </Card>
-
-
-      {/* Export Button */}
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+      {/* Summary, Weights Export Button */}
+      {/* <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
         <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
-          Export Weights (.xlsx)
+          Export Summary & Weights (.xlsx)
         </Button>
-      </Space>
+      </Space> */}
+
+      {/* Weights Visualization Component */}
+      <WeightsVisualization
+        variant={variant}
+        criteria={criteria}
+        crisp_weights={crisp_weights}
+        lower_weights={lower_weights}
+        upper_weights={upper_weights}
+      />
+
+      {/* Individual Inconsistency Visualization */}
+      {(isAhpNonFuzzy || isBwmNonFuzzy) && (
+        <NonFuzzyInconsistency
+          method={method}
+          variant={variant}
+          criteria={criteria}
+          crisp_weights={crisp_weights}
+          inconsistency_ratios={inconsistency_ratios}
+          matrix={matrix}
+          bestIdx={bestIdx}
+          worstIdx={worstIdx}
+        />
+      )}
+
+      {(isAhpFuzzy || isBwmFuzzy) && (
+        <FuzzyInconsistency
+          method={method}
+          variant={variant}
+          criteria={criteria}
+          crisp_weights={crisp_weights}
+          inconsistency_ratios={inconsistency_ratios}
+          matrix={matrix}
+          bestIdx={bestIdx}
+          worstIdx={worstIdx}
+          bestRow={bestRow}
+          worstCol={worstCol}
+        />
+      )}
+
     </div>
   );
 };

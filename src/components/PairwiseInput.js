@@ -18,7 +18,7 @@ const PairwiseInput = ({ criteria, setCriteria, editable = false, allowAddRemove
   };
 
   const handleAddCriterion = () => {
-    if (criteria.length < 5) {
+    if (criteria.length < 100) {
       setCriteria([...criteria, `Criterion ${criteria.length + 1}`]);
     }
   };
@@ -46,7 +46,7 @@ const PairwiseInput = ({ criteria, setCriteria, editable = false, allowAddRemove
                 </Space>
               </Form.Item>
             ))}
-            {allowAddRemove && editable && criteria.length < 5 && (
+            {allowAddRemove && editable && criteria.length < 100 && (
               <Button type="dashed" onClick={handleAddCriterion} block>
                 + Add Criterion
               </Button>

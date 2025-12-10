@@ -17,14 +17,14 @@ export default function Header() {
             height={40}
             className={styles.logoImage}
           />
-          <span className={styles.logoText}>Trader Off Calculator</span>
+          <span className={styles.logoText}>Pairwise Comparison Tool</span>
         </div>
       </Link>
 
       {/* Right side: Link */}
       <nav className={styles.navContainer}>
         <Link to="/" className={styles.navLink}>HOME</Link>
-        <Link to="/calculator" state={{ reset: true }} className={styles.navLink}>CALCULATOR</Link>
+        <Link to="/calculator" state={{ reset: true }} className={styles.navLink}>Pairwise Comparision</Link>
       </nav>
     </header>
   );

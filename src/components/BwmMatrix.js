@@ -1,7 +1,7 @@
 import React from 'react';
 import { Typography, Table, Select } from 'antd';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const scaleOptions = [
 //   { value: 1 / 9, label: '1/9' }, { value: 1 / 8, label: '1/8' },
@@ -15,7 +15,7 @@ const scaleOptions = [
   { value: 8, label: '8' }, { value: 9, label: '9' },
 ];
 
-const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
+const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx, extra }) => {
   const handleChange = (i, j, value) => {
     const updated = [...matrix];
     updated[i][j] = value;
@@ -78,7 +78,21 @@ const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
 
   return (
     <div style={{ marginTop: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          // justifyContent: 'space-between', // right align
+          // alignItems: 'center',
+          // marginBottom: 8,
+          justifyContent: 'flex-start', // left align
+          gap: 8,                      
+          marginBottom: 8,
+        }}
+      >
       <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Editable BWM Matrix</Title>
+      {extra}
+      </div>
+      
       <Table
         dataSource={dataSource}
         columns={columns}
@@ -88,6 +102,10 @@ const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
         tableLayout="fixed" 
         scroll={{ x: true }}
       />
+
+      <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
+        Note: Greyed-out cells are inactive based on the Best-Worst Method rules.
+      </Text>
     </div>
   );
 };

@@ -13,7 +13,7 @@ export default function Layout({ children }) {
       </main>
       <footer className={styles.footer}>
         <div className={styles.container}>
-          <p>© 2025 PSI Trade Off Calculator</p>
+          <p>Disclaimer 1: We are not responsible for the accuracy or reliability of the calculation results. Users should verify the outcomes independently.</p>
         </div>
       </footer>
     </div>
