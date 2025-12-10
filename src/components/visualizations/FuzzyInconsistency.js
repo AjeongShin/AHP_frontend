@@ -14,6 +14,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { convertMatrixToValues } from '../AhpFuzzyMatrix';
+import { DownloadOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
@@ -271,14 +272,6 @@ const FuzzyInconsistency = ({
     }
   }
 
-  console.log('FuzzyInconsistency AHP linguistic', {
-    method,
-    variant,
-    isAhpFuzzy,
-    pairs,
-    matrix,
-  });
-
   if (!pairs.length) return null;
 
   // 2) triangle data + point data (fixed color per pair in HSL)
@@ -390,7 +383,7 @@ const FuzzyInconsistency = ({
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "visualization.svg";
+    a.download = "Individual_Inconsistency_triangular.svg";
     a.click();
 
     URL.revokeObjectURL(url);
@@ -399,9 +392,19 @@ const FuzzyInconsistency = ({
 
   return (
     <Card style={{ marginTop: 24 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,              
+          // marginBottom: 16,
+        }}
+      >
       <Title level={3} style={{ marginTop: 0, marginBottom: 12 }}>
         Individual Inconsistency
       </Title>
+      <Button icon={<DownloadOutlined />} onClick={exportSvg}>Export Individual Inconsistency (.svg)</Button>
+      </div>
 
       <div style={{ width: '100%', overflowX: 'auto' }} ref={chartRef}>
         <div style={{ minWidth: 600 }}>
@@ -534,7 +537,7 @@ const FuzzyInconsistency = ({
         </div>
       </div>
 
-    <Button onClick={exportSvg}>Export SVG</Button>
+    {/* <Button onClick={exportSvg}>Export SVG</Button> */}
     
     </Card>
   );

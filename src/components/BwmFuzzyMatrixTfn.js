@@ -14,7 +14,7 @@ export const convertMatrixToValues = (tfnMatrix) => {
   );
 };
 
-const AhpFuzzyMatrixTfn = ({ matrix, setMatrix, criteria, bestIdx, worstIdx}) => {
+const AhpFuzzyMatrixTfn = ({ matrix, setMatrix, criteria, bestIdx, worstIdx, extra}) => {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCell, setEditingCell] = useState(null);
   // const [tempTfn, setTempTfn] = useState([1, 1, 1]);
@@ -193,9 +193,23 @@ const AhpFuzzyMatrixTfn = ({ matrix, setMatrix, criteria, bestIdx, worstIdx}) =>
 
   return (
     <div style={{ marginTop: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          // justifyContent: 'space-between', // right align
+          // alignItems: 'center',
+          // marginBottom: 8,
+          justifyContent: 'flex-start', // left align
+          gap: 8,                      
+          marginBottom: 8,
+        }}
+      >
       <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
         Editable Fuzzy AHP Matrix
       </Title>
+      {extra}
+      </div>
+      
       <Table
         dataSource={dataSource}
         columns={columns}

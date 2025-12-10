@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   ResponsiveContainer, Tooltip, LabelList
 } from 'recharts';
+import { DownloadOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
@@ -115,7 +116,7 @@ const WeightsVisualization = ({
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "visualization.svg";
+    a.download = `Weight_Visualization_${variant}.svg`;
     a.click();
 
     URL.revokeObjectURL(url);
@@ -124,9 +125,19 @@ const WeightsVisualization = ({
 
   return (
     <Card style={{ marginBottom: 24 }}>
-      <Title level={3} style={{ marginTop: 0, marginBottom: 16 }}>
-        Weights Visualization
-      </Title>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,              
+          // marginBottom: 16,
+        }}
+      >
+        <Title level={3} style={{ marginTop: 0, marginBottom: 16 }}>
+          Weights Visualization
+        </Title>
+        <Button icon={<DownloadOutlined />} onClick={exportSvg}>Export Weights Visualization (.svg)</Button>
+      </div>
 
       {isLinearOrOrigin ? (
         <div style={{ width: '100%', overflowX: 'auto' }} ref={chartRef}>
@@ -200,7 +211,7 @@ const WeightsVisualization = ({
           </div>
         </div>
         )}
-        <Button onClick={exportSvg}>Export SVG</Button>
+        {/* <Button onClick={exportSvg}>Export SVG</Button> */}
     </Card>
   );
 };

@@ -6,8 +6,8 @@ import L_FuzzyMatrix, { convertMatrixToValues } from '../components/BwmFuzzyMatr
 import FuzzyMatrix from '../components/BwmFuzzyMatrixTfn';
 import Results from '../components/Results';
 import { BwmWeights } from '../api/fetchWeights';
-import { importMatrixFile } from '../utils/matrixImport';
-import { validateBWM } from '../utils/validators';
+import { importMatrixFile, importFuzzyMatrixFile, importBWMLinguisticMatrixFile} from '../utils/matrixImport';
+import { validateBWM, validateFuzzyBWM, validateLinguisticFuzzyBWM} from '../utils/validators';
 import { UploadOutlined } from '@ant-design/icons';
 import { exportMatrixXlsx } from '../utils/matrixExport';
 import { DownloadOutlined } from '@ant-design/icons';
@@ -40,22 +40,45 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
   const { token } = theme.useToken();
 
   /**
-   * Import AHP matrix from CSV/XLSX file
+   * Import BWM matrix from CSV/XLSX file
    * Validates the imported data before applying
    * @param {File} file - The uploaded file
    * @returns {boolean} - Returns false to prevent default upload behavior
    */
+    const templateHrefMap = {
+      'linear': `${process.env.PUBLIC_URL}/templates/BWM_matrix_template.xlsx`,
+      'nonlinear': `${process.env.PUBLIC_URL}/templates/BWM_matrix_template.xlsx`,
+      'fuzzy': `${process.env.PUBLIC_URL}/templates/BWM_fuzzy_tfn_template.xlsx`,
+      'linguistic fuzzy': `${process.env.PUBLIC_URL}/templates/BWM_linguistic_template.xlsx`,
+    };
+
+    const templateHref = templateHrefMap[variant];
     const handleImport = async (file) => {
     try {
-        const { criteria: c, matrix: M } = await importMatrixFile(file);
-        const res = validateBWM(c, M);
+        let c, M, res
+
+        if (variant === 'linear' || variant === 'nonlinear'){
+          ({ criteria: c, matrix: M } = await importMatrixFile(file));  
+          res = validateBWM(c, M);
+        }
+
+        if (variant === 'fuzzy'){
+          ({ criteria: c, matrix: M } = await importFuzzyMatrixFile(file));  
+          res = validateFuzzyBWM(c, M);
+        }
+
+        if (variant === 'linguistic fuzzy'){
+          ({ criteria: c, matrix: M } = await importBWMLinguisticMatrixFile(file));  
+          res = validateLinguisticFuzzyBWM(c, M);
+        }
+
         if (!res.ok) {
-        Modal.error({
-            title: 'Invalid BWM matrix',
-            content: <div>{res.errors.map((e,i)=><div key={i}>• {e}</div>)}</div>,
-            width: 560,
-        });
-        return false;
+          Modal.error({
+              title: 'Invalid BWM matrix',
+              content: <div>{res.errors.map((e,i)=><div key={i}>• {e}</div>)}</div>,
+              width: 560,
+          });
+          return false;
         }
 
         // Auto-detect best and worst criteria from matrix
@@ -64,20 +87,27 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
 
         // Find best: row with all non-zero values (except diagonal)
         for (let i = 0; i < M.length; i++) {
-        const hasAllNonZero = M[i].every((val, j) => i === j || val !== 0);
-        if (hasAllNonZero) {
+          const hasAllNonZero = M[i].every((val, j) => {
+            if (i === j) return true; // skip diagonal
+            // Handle different types: 0, '0', or any truthy value
+            return val !== 0 && val !== '0' && val !== null && val !== undefined;
+          });
+          if (hasAllNonZero) {
             detectedBest = c[i];
             break;
-        }
+          }
         }
         
         // Find worst: column with all non-zero values (except diagonal)
         for (let j = 0; j < M[0].length; j++) {
-        const hasAllNonZero = M.every((row, i) => i === j || row[j] !== 0);
-        if (hasAllNonZero) {
+          const hasAllNonZero = M.every((row, i) => {
+            if (i === j) return true; // skip diagonal
+            return row[j] !== 0 && row[j] !== '0' && row[j] !== null && row[j] !== undefined;
+          });
+          if (hasAllNonZero) {
             detectedWorst = c[j];
             break;
-        }
+          }
         }
 
         // Apply validated data
@@ -269,6 +299,12 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     });
   }; 
 
+  const headerExtra = (
+    <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+      Export Input Matrix (.xlsx)
+    </Button>
+  );
+
   const numericMatrixForViz =
     variant === 'linguistic fuzzy'
       ? convertMatrixToValues(matrix)
@@ -283,6 +319,7 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     worstIdx >= 0 && Array.isArray(numericMatrixForViz)
       ? numericMatrixForViz.map(row => row[worstIdx])
       : null;
+
     return (
           <div
             style={{
@@ -307,7 +344,7 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
               {methodSelector}
             </div>
 
-            <div style={{ margin: '8px 0 24px' }}>
+            <div style={{ margin: '8px 0 10px' }}>
             {/* Upload CSV file */}
             <Upload
               beforeUpload={handleImport}
@@ -324,11 +361,11 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                 '.XLSX'
               ].join(',')}
             >
-              <Button icon={<UploadOutlined />}>Import BWM CSV/XLSX</Button>
+            <Button icon={<UploadOutlined />} style={{ marginTop: 16, marginBottom: 0 }}> Import BWM CSV/XLSX</Button>
             </Upload>
 
             <Typography.Link
-                href={`${process.env.PUBLIC_URL}/templates/BWM_matrix_template.xlsx`}
+                href={templateHref}
                 download
                 style={{ display: 'inline-block', marginLeft: 10, textDecoration: 'underline' }}
             >
@@ -467,6 +504,7 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                     criteria={criteria}
                     bestIdx={bestIdx}
                     worstIdx={worstIdx}
+                    extra={headerExtra}
                     />
                 ) : variant === 'fuzzy' ? (
                     <FuzzyMatrix
@@ -475,6 +513,7 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                     criteria={criteria}
                     bestIdx={bestIdx}
                     worstIdx={worstIdx}
+                    extra={headerExtra}
                     />
                 ) : (
                     <BwmMatrix
@@ -483,16 +522,17 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                         criteria={criteria}
                         bestIdx={bestIdx}
                         worstIdx={worstIdx}
+                        extra={headerExtra}
                     />
                 )}
                 </div>
 
           {/* Input Matrix Export Button */}
-          <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+          {/* <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
             <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
               Export Input Matrix (.xlsx)
             </Button>
-          </Space>
+          </Space> */}
 
                 {crisp_weights.length > 0 && (
                     <>

@@ -15,7 +15,7 @@ const scaleOptions = [
   { value: 8, label: '8' }, { value: 9, label: '9' },
 ];
 
-const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
+const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx, extra }) => {
   const handleChange = (i, j, value) => {
     const updated = [...matrix];
     updated[i][j] = value;
@@ -78,7 +78,21 @@ const BwmMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
 
   return (
     <div style={{ marginTop: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          // justifyContent: 'space-between', // right align
+          // alignItems: 'center',
+          // marginBottom: 8,
+          justifyContent: 'flex-start', // left align
+          gap: 8,                      
+          marginBottom: 8,
+        }}
+      >
       <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Editable BWM Matrix</Title>
+      {extra}
+      </div>
+      
       <Table
         dataSource={dataSource}
         columns={columns}

@@ -32,7 +32,7 @@ export const convertMatrixToValues = (labelMatrix) => {
   );
 };
 
-const FuzzyMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
+const FuzzyMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx, extra }) => {
   const handleChange = (i, j, label) => {
     const updated = matrix.map(row => [...row]);
     updated[i][j] = label;
@@ -133,6 +133,7 @@ const FuzzyMatrix = ({ matrix, setMatrix, criteria, bestIdx, worstIdx }) => {
         >
           <QuestionCircleOutlined style={{ marginLeft: 8, cursor: 'pointer', fontSize: 20 }} />
         </Popover>
+        {extra}
       </div>
         
         <Table

@@ -55,7 +55,7 @@ export const convertMatrixToValues = (labelMatrix) => {
   );
 };
 
-const AhpFuzzyMatrix = ({ matrix, setMatrix, criteria}) => {
+const AhpFuzzyMatrix = ({ matrix, setMatrix, criteria, extra}) => {
   const handleChange = (i, j, label) => {
     const updated = matrix.map(row => [...row]);
     updated[i][j] = label;
@@ -118,7 +118,7 @@ const AhpFuzzyMatrix = ({ matrix, setMatrix, criteria}) => {
       >
       
       <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>Editable AHP Matrix</Title>
-      
+
       <Popover
         title={
           <span style={{fontSize: 18, fontWeight: 'bold'}}>
@@ -150,6 +150,8 @@ const AhpFuzzyMatrix = ({ matrix, setMatrix, criteria}) => {
       >
         <QuestionCircleOutlined style={{ marginLeft: 8, cursor: 'pointer', fontSize: 20 }} />
       </Popover>
+
+      {extra}
     </div>
       
       <Table

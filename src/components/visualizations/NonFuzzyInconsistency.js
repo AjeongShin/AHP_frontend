@@ -4,6 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   ResponsiveContainer, Tooltip, ReferenceLine, LineChart, Line, Legend
 } from 'recharts';
+import { DownloadOutlined } from '@ant-design/icons';
+import html2canvas from 'html2canvas';
 
 const { Title } = Typography;
 
@@ -253,7 +255,35 @@ const NonFuzzyInconsistency = ({
 
   const vizchartWidth = Math.max(ratioData.length * 80, 600);
 
-  const exportSvg = () => {
+  const handleExport = async () => {
+    // heatmap
+  if (vizMode === 'heatmap') {
+    if (!chartRef.current) {
+      console.warn('Heatmap container not found');
+      return;
+    }
+
+    try {
+      const scale = 3; // scale 2~3: 300~600ppi
+      const canvas = await html2canvas(chartRef.current, {
+        scale,
+        useCORS: true,
+        backgroundColor: true,
+      });
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'Individual_Inconsistency_heatmap.png';
+      a.click();
+    } catch (e) {
+      console.error('Failed to export heatmap PNG:', e);
+    }
+
+    return;
+  }
+
+    // lollipop, bar graph
     const svg = chartRef.current?.querySelector("svg");
     if (!svg) {
       console.warn("SVG not found");
@@ -272,19 +302,32 @@ const NonFuzzyInconsistency = ({
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "visualization.svg";
+    a.download = `Individual_Inconsistency_${vizMode}.svg`;
     a.click();
 
     URL.revokeObjectURL(url);
   };
 
-
   return (
     <Card style={{ marginTop: 24 }}>
       <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,              
+            // marginBottom: 16,
+          }}
+        >
         <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
           Individual Inconsistency
         </Title>
+        <Button icon={<DownloadOutlined />} onClick={handleExport}>
+          {vizMode === 'heatmap'
+            ? 'Export Individual Inconsistency (.png)'
+            : 'Export Individual Inconsistency (.svg)'}
+        </Button>
+        </div>
         <select
           value={vizMode}
           onChange={(e) => setVizMode(e.target.value)}
@@ -514,7 +557,7 @@ const NonFuzzyInconsistency = ({
             </div>
           </div>
         )}
-        <Button onClick={exportSvg}>Export SVG</Button>
+        {/* <Button onClick={exportSvg}>Export SVG</Button> */}
       </div>
     </Card>
   );

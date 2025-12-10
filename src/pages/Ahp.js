@@ -6,8 +6,8 @@ import L_FuzzyMatrix, { convertMatrixToValues } from '../components/AhpFuzzyMatr
 import FuzzyMatrix from '../components/AhpFuzzyMatrixTfn';
 import Results from '../components/Results';
 import { AhpWeights } from '../api/fetchWeights';
-import { importMatrixFile } from '../utils/matrixImport';
-import { validateAHP } from '../utils/validators';
+import { importMatrixFile, importFuzzyMatrixFile, importAHPLinguisticMatrixFile} from '../utils/matrixImport';
+import { validateAHP, validateFuzzyAHP, validateLinguisticFuzzyAHP} from '../utils/validators';
 import { UploadOutlined } from '@ant-design/icons';
 import { exportMatrixXlsx } from '../utils/matrixExport';
 import { DownloadOutlined } from '@ant-design/icons';
@@ -48,10 +48,32 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
    * @param {File} file - The uploaded file
    * @returns {boolean} - Returns false to prevent default upload behavior
    */
+  const templateHrefMap = {
+    'origin': `${process.env.PUBLIC_URL}/templates/AHP_matrix_template.xlsx`,
+    'fuzzy': `${process.env.PUBLIC_URL}/templates/AHP_fuzzy_tfn_template.xlsx`,
+    'linguistic fuzzy': `${process.env.PUBLIC_URL}/templates/AHP_linguistic_template.xlsx`,
+  };
+
+  const templateHref = templateHrefMap[variant];
   const handleImport = async (file) => {
   try {
-    const { criteria: c, matrix: M } = await importMatrixFile(file);
-    const res = validateAHP(c, M);
+    let c, M, res
+
+    if (variant === 'origin'){
+    ({ criteria: c, matrix: M } = await importMatrixFile(file));
+    res = validateAHP(c, M);
+    }
+
+    if (variant === 'fuzzy'){
+    ({ criteria: c, matrix: M } = await importFuzzyMatrixFile(file));
+    res = validateFuzzyAHP(c, M);
+    }
+
+    if (variant === 'linguistic fuzzy'){
+    ({ criteria: c, matrix: M } = await importAHPLinguisticMatrixFile(file));
+    res = validateLinguisticFuzzyAHP(c, M);
+    }
+
     if (!res.ok) {
       Modal.error({
         title: 'Invalid AHP matrix',
@@ -59,7 +81,8 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
         width: 560,
       });
       return false;
-    }
+    } 
+  
     // Apply validated data
     // setCriteria(c);
     updateCriteria(c);
@@ -246,6 +269,12 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
     });
   }; 
 
+  const headerExtra = (
+    <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+      Export Input Matrix (.xlsx)
+    </Button>
+  );
+
   return (
       <div
         style={{
@@ -269,7 +298,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
           {methodSelector}
         </div>
 
-        <div style={{ margin: '8px 0 24px' }}>
+        <div style={{ margin: '8px 0 10px' }}>
           {/* Upload CSV file */}
           <Upload
             beforeUpload={handleImport}
@@ -292,7 +321,7 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
           </Upload>
 
           <Typography.Link
-            href={`${process.env.PUBLIC_URL}/templates/AHP_matrix_template.xlsx`}
+            href={templateHref}
             download
             style={{ display: 'inline-block', marginLeft: 10, textDecoration: 'underline' }}
           >
@@ -408,28 +437,31 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
                 matrix={matrix}
                 setMatrix={setMatrix}
                 criteria={criteria}
+                extra={headerExtra}
               />
             ) : variant === 'fuzzy' ? (
               <FuzzyMatrix
                 matrix={matrix}
                 setMatrix={setMatrix}
                 criteria={criteria}
+                extra={headerExtra}
               />
             ) : (
               <PairwiseMatrix
                 matrix={matrix}
                 setMatrix={setMatrix}
                 criteria={criteria}
+                extra={headerExtra}
               />
             )}
             </div>
 
           {/* Input Matrix Export Button */}
-          <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+          {/* <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
             <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
               Export Input Matrix (.xlsx)
             </Button>
-          </Space>
+          </Space> */}
 
               {crisp_weights.length > 0 && lambdaMax !== null && (
                 <>

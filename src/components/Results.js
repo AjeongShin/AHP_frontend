@@ -37,6 +37,7 @@ const Results = ({
   const { token } = theme.useToken();
   const [vizMode, setVizMode] = React.useState('lollipop');
   const [hoveredPair, setHoveredPair] = React.useState(null); // hovering at slope chart
+  const heatmapRef = React.useRef<HTMLDivElement | null>(null); // to capture heapmap
 
   /**
    * Round number to specified decimal places
@@ -154,13 +155,48 @@ const Results = ({
       interpretation: interpretationText,
       ranking: sorted_criteria,
     });
-  };  
+  };
+
+  // const handleExportHeatmapPng = async () => {
+  //   if (!heatmapRef.current) return;
+
+  //   try {
+  //     const scale = 3; // resolution : 2~3 
+  //     const canvas = await html2canvas(heatmapRef.current, {
+  //       scale,
+  //       useCORS: true,
+  //       backgroundColor: null, // background color
+  //     });
+
+  //     const dataUrl = canvas.toDataURL('image/png');
+  //     const a = document.createElement('a');
+  //     a.href = dataUrl;
+  //     a.download = `heatmap_${method}_${variant || 'default'}.png`;
+  //     document.body.appendChild(a);
+  //     a.click();
+  //     document.body.removeChild(a);
+  //   } catch (e) {
+  //     console.error('Failed to export heatmap as PNG:', e);
+  //   }
+  // };
 
   return (
     <div style={{ marginTop: 24 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,              
+          // marginBottom: 16,
+        }}
+      >
       <Title level={3} style={{ marginTop: 0, marginBottom: 12 }}>
         {title}
       </Title>
+      <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
+        Export Summary & Weights (.xlsx)
+      </Button>
+      </div>
 
       <Descriptions
         column={1}
@@ -231,11 +267,11 @@ const Results = ({
         )}
 
       {/* Summary, Weights Export Button */}
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
+      {/* <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
         <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
           Export Summary & Weights (.xlsx)
         </Button>
-      </Space>
+      </Space> */}
 
       {/* Weights Visualization Component */}
       <WeightsVisualization
