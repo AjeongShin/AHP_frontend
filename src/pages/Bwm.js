@@ -219,7 +219,26 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
       setSortedCriteria(sorted_criteria);
       setCi(ci);
       setCr(cr);
-      setInconsistencyRatio(inconsistency_ratios ?? []);
+
+      const n = criteria.length;
+      const inconsistency2D = Array(n).fill(null).map(() => Array(n).fill(null));
+      
+      // best_to_others> bestIdx row
+      if (inconsistency_ratios?.best_to_others) {
+        inconsistency_ratios.best_to_others.forEach((val, j) => {
+          inconsistency2D[bestIdx][j] = val;
+        });
+      }
+      
+      // others_to_worst> worstIdx col
+      if (inconsistency_ratios?.others_to_worst) {
+        inconsistency_ratios.others_to_worst.forEach((val, i) => {
+          inconsistency2D[i][worstIdx] = val;
+        });
+      }
+
+      // setInconsistencyRatio(inconsistency_ratios ?? []);
+      setInconsistencyRatio(inconsistency2D);
       setExtra(extra);
     } catch (err) {
       alert(err.message);

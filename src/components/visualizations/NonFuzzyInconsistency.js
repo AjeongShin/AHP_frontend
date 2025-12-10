@@ -75,40 +75,84 @@ const NonFuzzyInconsistency = ({
     }
   }
 
-  if (isBwmNonFuzzy && inconsistency_ratios) {
-    const bwo = inconsistency_ratios.bwo || [];
-    const wwo = inconsistency_ratios.wwo || [];
-    const w_best = crisp_weights[bestIdx];
-    const w_worst = crisp_weights[worstIdx];
-
+  if (isBwmNonFuzzy && Array.isArray(inconsistency_ratios)) {
     for (let j = 0; j < n; j++) {
+      if (j === bestIdx) continue; 
+      
+      const value = inconsistency_ratios[bestIdx]?.[j];
+      if (!Number.isFinite(value)) continue;
+
+      const w_best = crisp_weights[bestIdx];
       const w_j = crisp_weights[j];
       const implied = (typeof w_best === 'number' && typeof w_j === 'number' && w_j !== 0)
         ? w_best / w_j : null;
 
       inconsistencyData.push({
-        i: bestIdx, j,
+        i: bestIdx,
+        j,
         pair: `${criteria[bestIdx]} vs ${criteria[j]}`,
-        value: bwo[j],
+        value,
         declared: matrix[bestIdx][j],
         implied,
       });
     }
 
     for (let i = 0; i < n; i++) {
+      if (i === worstIdx) continue; 
+
+      const value = inconsistency_ratios[i]?.[worstIdx];
+      if (!Number.isFinite(value)) continue;
+
       const w_i = crisp_weights[i];
+      const w_worst = crisp_weights[worstIdx];
       const implied = (typeof w_i === 'number' && typeof w_worst === 'number' && w_worst !== 0)
         ? w_i / w_worst : null;
 
       inconsistencyData.push({
-        i, j: worstIdx,
+        i,
+        j: worstIdx,
         pair: `${criteria[i]} vs ${criteria[worstIdx]}`,
-        value: wwo[i],
+        value,
         declared: matrix[i][worstIdx],
         implied,
       });
     }
   }
+
+  // if (isBwmNonFuzzy && inconsistency_ratios) {
+  //   const bwo = inconsistency_ratios.bwo || [];
+  //   const wwo = inconsistency_ratios.wwo || [];
+  //   const w_best = crisp_weights[bestIdx];
+  //   const w_worst = crisp_weights[worstIdx];
+
+  //   for (let j = 0; j < n; j++) {
+  //     const w_j = crisp_weights[j];
+  //     const implied = (typeof w_best === 'number' && typeof w_j === 'number' && w_j !== 0)
+  //       ? w_best / w_j : null;
+
+  //     inconsistencyData.push({
+  //       i: bestIdx, j,
+  //       pair: `${criteria[bestIdx]} vs ${criteria[j]}`,
+  //       value: bwo[j],
+  //       declared: matrix[bestIdx][j],
+  //       implied,
+  //     });
+  //   }
+
+  //   for (let i = 0; i < n; i++) {
+  //     const w_i = crisp_weights[i];
+  //     const implied = (typeof w_i === 'number' && typeof w_worst === 'number' && w_worst !== 0)
+  //       ? w_i / w_worst : null;
+
+  //     inconsistencyData.push({
+  //       i, j: worstIdx,
+  //       pair: `${criteria[i]} vs ${criteria[worstIdx]}`,
+  //       value: wwo[i],
+  //       declared: matrix[i][worstIdx],
+  //       implied,
+  //     });
+  //   }
+  // }
 
   // Prepare chart data
   // const ratioData = inconsistencyData.map(d => ({
@@ -157,10 +201,12 @@ const NonFuzzyInconsistency = ({
     heatMax = diffs.length > 0 ? Math.max(...diffs) : 0;
   }
 
-  if (isBwmNonFuzzy && inconsistency_ratios) {
+  if (isBwmNonFuzzy && Array.isArray(inconsistency_ratios)) {
     for (let j = 0; j < n; j++) {
-      const ratio = inconsistency_ratios.bwo?.[j];
-      const diff = typeof ratio === 'number' ? Math.abs(ratio - 1) : 0;
+      const ratio = inconsistency_ratios[bestIdx]?.[j];
+      if (!Number.isFinite(ratio)) continue;
+      
+      const diff = Math.abs(ratio - 1);
       heatmapData.push({
         row: criteria[bestIdx],
         col: criteria[j],
@@ -170,8 +216,10 @@ const NonFuzzyInconsistency = ({
     }
 
     for (let i = 0; i < n; i++) {
-      const ratio = inconsistency_ratios.wwo?.[i];
-      const diff = typeof ratio === 'number' ? Math.abs(ratio - 1) : 0;
+      const ratio = inconsistency_ratios[i]?.[worstIdx];
+      if (!Number.isFinite(ratio)) continue;
+      
+      const diff = Math.abs(ratio - 1);
       heatmapData.push({
         row: criteria[i],
         col: criteria[worstIdx],
@@ -179,9 +227,35 @@ const NonFuzzyInconsistency = ({
         diff,
       });
     }
+
     const diffs = heatmapData.map(d => d.diff);
     heatMax = diffs.length > 0 ? Math.max(...diffs) : 0;
   }
+  // if (isBwmNonFuzzy && inconsistency_ratios) {
+  //   for (let j = 0; j < n; j++) {
+  //     const ratio = inconsistency_ratios.bwo?.[j];
+  //     const diff = typeof ratio === 'number' ? Math.abs(ratio - 1) : 0;
+  //     heatmapData.push({
+  //       row: criteria[bestIdx],
+  //       col: criteria[j],
+  //       value: ratio,
+  //       diff,
+  //     });
+  //   }
+
+  //   for (let i = 0; i < n; i++) {
+  //     const ratio = inconsistency_ratios.wwo?.[i];
+  //     const diff = typeof ratio === 'number' ? Math.abs(ratio - 1) : 0;
+  //     heatmapData.push({
+  //       row: criteria[i],
+  //       col: criteria[worstIdx],
+  //       value: ratio,
+  //       diff,
+  //     });
+  //   }
+  //   const diffs = heatmapData.map(d => d.diff);
+  //   heatMax = diffs.length > 0 ? Math.max(...diffs) : 0;
+  // }
 
   // Y-axis scale for lollipop
   let minTick = 0, maxTick = 0, yTicks = [];
