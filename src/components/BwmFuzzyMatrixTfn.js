@@ -205,7 +205,7 @@ const AhpFuzzyMatrixTfn = ({ matrix, setMatrix, criteria, bestIdx, worstIdx, ext
         }}
       >
       <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-        Editable Fuzzy AHP Matrix
+        Editable BWM Matrix
       </Title>
       {extra}
       </div>

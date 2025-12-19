@@ -13,7 +13,7 @@ export default function Header() {
           <img
             src={logo}              
             alt="PSI Logo"
-            width={100}
+            width={90}
             height={40}
             className={styles.logoImage}
           />
@@ -25,6 +25,7 @@ export default function Header() {
       <nav className={styles.navContainer}>
         <Link to="/" className={styles.navLink}>HOME</Link>
         <Link to="/calculator" state={{ reset: true }} className={styles.navLink}>Pairwise Comparision</Link>
+        <Link to="https://mcda-calculator.psi.ch/" state={{ reset: true }} className={styles.navLink}>MCDA</Link>
       </nav>
     </header>
   );

@@ -179,6 +179,21 @@ const Results = ({
   //     console.error('Failed to export heatmap as PNG:', e);
   //   }
   // };
+  //  Table 3 (input-based CRI threshold): rows=scale(3~9), cols=n_criteria(3~9)
+  const CRI_THRESHOLDS = {
+      3: {3:0.1667,4:0.1667,5:0.1667,6:0.1667,7:0.1667,8:0.1667,9:0.1667},
+      4: {3:0.1121,4:0.1529,5:0.1898,6:0.2206,7:0.2527,8:0.2577,9:0.2683},
+      5: {3:0.1354,4:0.1994,5:0.2306,6:0.2546,7:0.2716,8:0.2844,9:0.2960},
+      6: {3:0.1330,4:0.1990,5:0.2643,6:0.3044,7:0.3144,8:0.3221,9:0.3262},
+      7: {3:0.1294,4:0.2457,5:0.2819,6:0.3029,7:0.3144,8:0.3251,9:0.3403},
+      8: {3:0.1309,4:0.2521,5:0.2958,6:0.3154,7:0.3408,8:0.3620,9:0.3657},
+      9: {3:0.1359,4:0.2681,5:0.3062,6:0.3337,7:0.3517,8:0.3620,9:0.3662},
+  }
+
+  const nCriteria = Array.isArray(criteria) ? criteria.length : 0;
+  const maxscale = 9;
+  const maxscaleNum = Number(maxscale); // "9" -> 9
+  const criThreshold = CRI_THRESHOLDS?.[maxscaleNum]?.[nCriteria];
 
   return (
     <div style={{ marginTop: 24 }}>
@@ -190,13 +205,53 @@ const Results = ({
           // marginBottom: 16,
         }}
       >
-      <Title level={3} style={{ marginTop: 0, marginBottom: 12 }}>
+      <Title level={3} style={{ marginTop: 0, marginBottom: 6 }}>
         {title}
       </Title>
       <Button icon={<DownloadOutlined />} onClick={handleExportXlsx}>
         Export Summary & Weights (.xlsx)
       </Button>
       </div>
+
+      {isAhpNonFuzzy && (
+      <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+        The result is calculate based on the publication: 
+        <a href="https://doi.org/10.1016/0270-0255(87)90473-8" target="_blank" rel="noreferrer">
+          https://doi.org/10.1016/0270-0255(87)90473-8
+        </a>
+      </Typography.Text>
+      )}
+      {isAhpFuzzy && (
+      <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+        The result is calculate based on the publication: 
+        <a href="https://doi.org/10.1016/j.fss.2009.10.011" target="_blank" rel="noreferrer">
+          https://doi.org/10.1016/j.fss.2009.10.011
+        </a>
+      </Typography.Text>
+      )}
+      {isBwmNonFuzzy && (
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+          The BWM {variant} calculation is grounded in the foundational research detailed in the 
+          publication available at: 
+          <a href="https://doi.org/10.1016/j.omega.2015.12.001" target="_blank" rel="noreferrer">
+            https://doi.org/10.1016/j.omega.2015.12.001
+          </a>
+          {", "}
+          <a href="https://doi.org/10.1016/j.omega.2019.102175" target="_blank" rel="noreferrer">
+            https://doi.org/10.1016/j.omega.2019.102175
+          </a>
+        </Typography.Text>
+        )}
+
+        {isBwmFuzzy && (
+        <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+          The BWM {variant} calculation is grounded in the foundational research detailed in the 
+          publication available at: 
+          <a href="https://doi.org/10.1016/j.knosys.2017.01.010" target="_blank" rel="noreferrer">
+            https://doi.org/10.1016/j.knosys.2017.01.010
+          </a>
+        </Typography.Text>
+        )}
 
       <Descriptions
         column={1}
@@ -205,7 +260,7 @@ const Results = ({
         labelStyle={{ width: 220, fontWeight: 600 }}
         style={{ marginBottom: 24 }}
       >
-        {method === 'ahp' && (
+        {isAhpNonFuzzy && (
           <Descriptions.Item label="λ max">
             {lambdaMax?.toFixed(3)}
           </Descriptions.Item>
@@ -217,17 +272,60 @@ const Results = ({
           </Descriptions.Item>
         )}
 
-        {ci !== null && (
+        {ci !== null && !isAhpFuzzy && !isBwmNonFuzzy && (
           <Descriptions.Item label="Consistency Index (CI)">
             {typeof ci === 'number' ? formatValue(ci) : 'N/A'}
           </Descriptions.Item>)}
 
-        {cr !== null && (
+        {ci !== null && isAhpFuzzy && (
+          <Descriptions.Item label="normalizing constant (Gamma)">
+            {typeof ci === 'number' ? formatValue(ci) : 'N/A'}
+          </Descriptions.Item>)}
+
+        {ci !== null && isBwmNonFuzzy && (
+          <Descriptions.Item label="Global Input-Based Consistency Ratio">
+            {typeof ci === 'number' ? formatValue(ci) : 'N/A'}
+          </Descriptions.Item>)}
+
+        {cr !== null && !isAhpFuzzy && !isBwmNonFuzzy && (
           <Descriptions.Item label="Consistency Ratio (CR)">
             {typeof cr === 'number' ? formatValue(cr) : 'N/A'}
           </Descriptions.Item>)}
 
-        {cr !== null && (  
+        {cr !== null && isAhpFuzzy && (
+          <Descriptions.Item label="Inconsistency index (NI)">
+            {typeof cr === 'number' ? formatValue(cr) : 'N/A'}
+          </Descriptions.Item>)}
+
+        {/* {cr !== null && isBwmNonFuzzy && (
+          <Descriptions.Item label="CRO (Output-based)">
+            {typeof cr === 'number' ? formatValue(cr) : 'N/A'}
+          </Descriptions.Item>)} */}
+
+        {/* {ci !== null && isBwmNonFuzzy && nCriteria > 2 && nCriteria < 10 && (
+          <Descriptions.Item label="Interpretation">
+            {typeof ci === 'number' ? (
+              ci > CRI_THRESHOLDS[maxscale][nCriteria] ? (
+                <span> Judgment is inconsistent (CR &gt; CRI_THRESHOLDS[maxscale][nCriteria])</span>
+              ) : (
+                <span> Judgment is consistent (CR &lt; CRI_THRESHOLDS[maxscale][nCriteria])</span>
+              )
+            ) : 'N/A'}
+        </Descriptions.Item>)} */}
+        {isBwmNonFuzzy && typeof ci === "number" && nCriteria > 2 && nCriteria < 10 && (
+          <Descriptions.Item label="Interpretation">
+            {typeof criThreshold !== "number" ? (
+              "N/A (no threshold)"
+            ) : ci > criThreshold ? (
+              <span>Judgment is inconsistent (CRI &gt; {criThreshold})</span>
+            ) : (
+              <span>Judgment is consistent (CRI ≤ {criThreshold})</span>
+            )}
+          </Descriptions.Item>
+        )}
+
+
+        {cr !== null && !isAhpFuzzy && !isBwmNonFuzzy &&(  
           <Descriptions.Item label="Interpretation">
             {typeof cr === 'number' ? (
               cr > 0.1 ? (

@@ -296,6 +296,26 @@ function Ahp({variant, methodSelector, methodChanged, criteriaCount, criteria, u
         </Title>
         <div style={{ marginTop: 24, marginBottom: 24 }}>
           {methodSelector}
+
+          {variant === 'origin' && (
+          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+            The AHP {variant} calculation is grounded in the foundational research detailed in the 
+            publication available at: 
+            <a href="https://doi.org/10.1016/0270-0255(87)90473-8" target="_blank" rel="noreferrer">
+              https://doi.org/10.1016/0270-0255(87)90473-8
+            </a>
+          </Typography.Text>
+          )}
+
+          {(variant === 'fuzzy' || variant === 'linguistic fuzzy') && (
+          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+            The AHP {variant} calculation is grounded in the foundational research detailed in the 
+            publication available at: 
+            <a href="https://doi.org/10.1016/j.fss.2009.10.011" target="_blank" rel="noreferrer">
+              https://doi.org/10.1016/j.fss.2009.10.011
+            </a>
+          </Typography.Text>
+          )}
         </div>
 
         <div style={{ margin: '8px 0 10px' }}>

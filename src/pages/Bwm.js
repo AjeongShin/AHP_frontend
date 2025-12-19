@@ -361,6 +361,27 @@ function Bwm({variant, methodSelector, methodChanged, criteriaCount, criteria, u
             </Title>
             <div style={{ marginTop: 24, marginBottom: 24 }}>
               {methodSelector}
+
+              {(variant === 'linear' || variant === 'nonlinear') && (
+              <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                The BWM {variant} calculation is grounded in the foundational research detailed in the 
+                publication available at: 
+                <a href="https://doi.org/10.1016/j.omega.2015.12.001" target="_blank" rel="noreferrer">
+                  https://doi.org/10.1016/j.omega.2015.12.001
+                </a>
+              </Typography.Text>
+              )}
+    
+              {(variant === 'fuzzy' || variant === 'linguistic fuzzy') && (
+              <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                The BWM {variant} calculation is grounded in the foundational research detailed in the 
+                publication available at: 
+                <a href="https://doi.org/10.1016/j.knosys.2017.01.010" target="_blank" rel="noreferrer">
+                  https://doi.org/10.1016/j.knosys.2017.01.010
+                </a>
+              </Typography.Text>
+              )}
+
             </div>
 
             <div style={{ margin: '8px 0 10px' }}>

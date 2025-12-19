@@ -200,7 +200,7 @@ return (
         }}
       >
       <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-        Editable Fuzzy AHP Matrix
+        Editable AHP Matrix
       </Title>
       {extra}
       </div>

@@ -5,8 +5,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px;
+  height: 55px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  /* font-weight: bold;  */
 }
 
 .logoContainer { text-decoration: none; }
@@ -16,7 +17,6 @@
 .logoText {
   color: #fff;
   font-size: 30px;
-  /* font-weight: bold;  */
   margin-right: 20px;
   margin-left: 5px;
 }
@@ -25,7 +25,7 @@
 
 .navLink {
   color: #fff;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold; 
   cursor: pointer;
   opacity: 0.8;

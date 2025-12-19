@@ -405,6 +405,14 @@ const FuzzyInconsistency = ({
       </Title>
       <Button icon={<DownloadOutlined />} onClick={exportSvg}>Export Individual Inconsistency (.svg)</Button>
       </div>
+      
+      <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+        The triangular individual inconsistency calculation is grounded in the foundational research detailed in the 
+        publication available at: 
+        <a href="https://doi.org/10.1007/978-3-319-12502-2" target="_blank" rel="noreferrer">
+          https://doi.org/10.1007/978-3-319-12502-2
+        </a>
+      </Typography.Text>
 
       <div style={{ width: '100%', overflowX: 'auto' }} ref={chartRef}>
         <div style={{ minWidth: 600 }}>
